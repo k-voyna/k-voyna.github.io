@@ -1,0 +1,110 @@
+/* global */
+body {
+    background-color: #FFF;
+    font-family: tahoma, arial, sans-serif;
+}
+
+#main {
+    width: 800px;
+    margin: 0 auto;
+}
+
+.version {
+    font-size: smaller;
+    text-align: center;
+}
+
+h1, h2, h3 {
+    text-align: center;
+}
+
+h3 {
+    font-size: medium;
+    
+    
+}
+
+ul {
+    list-style-type: none;
+    padding: 0;
+}
+
+/* Calc [system] */
+table.calc-table {
+    background-color: #FFE;
+    border: 2px solid black;
+}
+
+table.calc-table tr {
+     border-top: dotted 1px #888; 
+}
+
+table.calc-table tr.calc-group-start {
+    border-top: solid 1px #777;
+}
+
+td.calc-cell-notation {
+
+}
+
+/* Calc [user] */
+.section0 {
+    background-color: #EED;
+    color: #000;
+}
+
+.section1 {
+    background-color: #CCB;
+    color: #000;
+}
+
+.section2 {
+    background-color: #AA9;
+    color: #000;
+}
+
+.section3 {
+    background-color: #887;
+    color: #000;
+}
+
+.section4 {
+    background-color: #665;
+    color: #000; 
+}
+
+.output {
+   background-color: black;
+   color: #FFE; 
+}       
+
+.optional {
+    background-color: #AAA;
+}
+
+.reference {
+   background-color: black;
+   color: #FFE; 
+}
+
+table.calc-table .error input, table.calc-table tr.calc-message.error, input.error {
+    color: #B21;
+}
+
+table.calc-table .error input, input.error {
+    font-weight: bold;
+}
+
+table.calc-table .warning input, .calc tr.calc-message.warning, table.calc-table tr.warning td.calc-cell-value {
+    color: orange;
+}
+
+#calc-plot--broadcast-0 {
+    height: 150px;
+    width: 300px;
+}
+
+#calc-plot--antennaE-1 {
+    height: 150px;
+    width: 300px;    
+}

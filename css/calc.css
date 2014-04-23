@@ -1,0 +1,64 @@
+/* font */
+table.calc-table {
+    border-collapse: collapse;
+    width: 100%;
+}
+
+.calc, .calc select, .calc input {
+    font-size: medium;
+}
+
+.calc select, .calc input[type="text"] {
+    width: 6em;
+}
+
+.calc p {
+    font-size: smaller;   
+}
+
+table.calc-table tr {
+    height: 1.8em;
+}
+
+table.calc-table td {
+
+}
+
+.calc tr.calc-message {
+    border-top-width: 0;
+    display: none;      
+}
+
+.calc td.calc-cell-value, .calc-cell-value input[type="text"] {
+    text-align: right;
+}
+
+.calc td.calc-cell-name {
+    width: auto;
+    padding-left: 0.25em;
+    padding-right: 0.25em;
+}
+
+.calc td.calc-cell-notation {
+    width: 6em;
+}
+
+.calc td.calc-cell-value {
+    width: 6em;
+    padding-right: 0.25em;
+}
+
+.calc td.calc-cell-msg {
+    padding-left: 0.25em;
+    padding-right: 0.75em;
+    text-align: right;
+    font-size: smaller;
+    font-style: italic;
+}
+
+.calc-plot {
+    height: 400px;
+    width: 600px;
+    margin: 0 auto;
+}
+ 
