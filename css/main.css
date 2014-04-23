@@ -4,6 +4,10 @@ body {
     font-family: tahoma, arial, sans-serif;
 }
 
+.navigation {
+    text-align: center;
+}
+
 #main {
     width: 800px;
     margin: 0 auto;
