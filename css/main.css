@@ -4,10 +4,6 @@ body {
     font-family: tahoma, arial, sans-serif;
 }
 
-.navigation {
-    text-align: center;
-}
-
 #main {
     width: 800px;
     margin: 0 auto;
@@ -109,6 +105,11 @@ table.calc-table .warning input, .calc tr.calc-message.warning, table.calc-table
 }
 
 #calc-plot--antennaE-1 {
+    height: 150px;
+    width: 300px;    
+}
+
+#calc-plot--antenna-0 {
     height: 150px;
     width: 300px;    
 }

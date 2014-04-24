@@ -154,7 +154,7 @@ Plots = {
             min : -90,
             max : 90
         };   
-    },    
+    }, 
     linF : function () {"use strict";
         return {
             ticks: [[100e3, "100"], [200e3, ""], [300e3, ""], [400e3, ""], [500e3, "500"], 
@@ -163,10 +163,76 @@ Plots = {
                     [1600e3, ""], [1700e3, ""], [1800e3, ""], [1900e3, ""], [2000e3, "2000"]],
             min : 100e3,
             max : 2000e3,
+                       
             axisLabel: "Частота, кГц",                        
             color : "#000000"
         };     
+    },    
+    linFx : function (fmin, fmax) {"use strict";
+        return {           
+            ticks: function (axis) {
+                var ticks = [];
+ 
+                // XXX: привязка к 100, 250, 500, 1000, 2500, 5000
+                var delta = (axis.max - axis.min) / 8;
+                var exp = Math.pow (10, Math.round (Math.log10 (axis.max)) - 1);
+                
+                delta = Math.round (delta / exp) * exp;
+                               
+                for (var f = 0; f <= axis.max; f += delta) {
+                    ticks.push (f);
+                }
+                
+                return ticks;
+            },
+            
+            tickFormatter : function formatter (val, axis) {
+                if (Math.abs (val) < 1e3) {
+                    return val.toString ();
+                } else if (Math.abs (val) < 1e6) {
+                    return (val / 1e3).toString () + " к";
+                } else {
+                    return (val / 1e6).toString () + " М";
+                } 
+            },            
+            
+            min : fmin,
+            max : fmax,            
+            
+            axisLabel: "Частота, Гц",                        
+            color : "#000000"
+        };     
     },
+    linRx : function () {"use strict";
+        return {
+            axisLabel: "Активное сопротивление, Ом",
+            color : "#000",
+            position: "left",
+            
+            tickFormatter : function formatter (val, axis) {
+                if (Math.abs (val) < 1e3) {
+                    return val;
+                } else {
+                    return (val / 1e3).toString () + " к";
+                }
+            },
+        };     
+    },    
+    linXx : function () {"use strict";
+        return {
+            axisLabel: "Реактивное сопротивление, Ом",
+            color : "#22C",
+            position: "right",
+            
+            tickFormatter : function formatter (val, axis) {
+                if (Math.abs (val) < 1e3) {
+                    return val;
+                } else {
+                    return (val / 1e3).toString () + " к";
+                }
+            },            
+        };     
+    },    
     linU : function () {"use strict";
         return {
             axisLabel: "Напряжение, В",
