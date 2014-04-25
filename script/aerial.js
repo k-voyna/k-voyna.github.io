@@ -5,7 +5,7 @@ Antenna = {
         var arg, step, max;
 
         max = -Infinity;
-        step = (argMax - argMin) / 1000;
+        step = (argMax - argMin) / 5000;
         
         for (arg = argMin; arg < argMax; arg += step) {
             if (fn (arg) > max) {

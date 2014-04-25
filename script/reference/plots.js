@@ -186,6 +186,8 @@ Plots = {
                 return ticks;
             },
             
+            // FIXME: 10E10
+            // FIXME: 0.17500000000000002
             tickFormatter : function formatter (val, axis) {
                 if (Math.abs (val) < 1e3) {
                     return val.toString ();

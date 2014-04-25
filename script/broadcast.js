@@ -22,12 +22,12 @@ function crystal () {"use strict";
             lambda : [1e0, 3],
             sigma : [1e+0, 1, "exp"],
             eps : [1e+0, 2],
-            Pi : [1e0, 2, "exp"],
+            Pi : [1e0, 1, "exp"],
             h : [1e0, 3],
-            E0 : [1e-3, 2],
-            Es : [1e-3, 2],
-            Eg : [1e-3, 2],
-            Emin : [1e-3, 2],
+            E0 : [1e-3, 1],
+            Es : [1e-3, 1],
+            Eg : [1e-3, 1],
+            Emin : [1e-3, 1],
             phi : [1e0, 2],
             hs : [1e3, 2],
             E : [1e-3, 1],
@@ -42,7 +42,7 @@ function crystal () {"use strict";
             Theta, F, R, gamma, phi, rho;
         
         // проверка входных значений
-        this.check (this.f >= 5e5 && this.f <= 2e6, "f");
+        this.check (this.f >= 150e3 && this.f <= 2e6, "f");
         this.check (this.P > 0 && this.P <= 10e6, "P");
         this.check (this.D > 1 && this.D <= 10e6, "D");
         this.check (this.H >= 90e3 && this.H <= 120e3, "H");
@@ -113,7 +113,7 @@ function crystal () {"use strict";
         // высота шарового сегмента 
         this.hs = Phys.Re * (1 - Math.cos (this.gamma / 2));
         
-        // угол падентя волны
+        // угол падения ионосферной волны
         function fnTheta (D, H) {
             var Theta, gamma;
             gamma = D / (2 * Phys.Re);
@@ -135,7 +135,7 @@ function crystal () {"use strict";
         }
 
         // рассчет напряженности поля ионосферной волны. 
-        // Формула ММКР + учет ДН передающей антенны + учет вторичного отражения от земли
+        // Формула ММКР + учет ДН передающей антенны + учет поляризации при вторичном отражении от земли (см. Надененко)
         function fnSkywave (lambda, P, fnD, D, H) {
             var Theta, k;
             

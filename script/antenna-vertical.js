@@ -41,7 +41,7 @@ function crystal () {"use strict";
             V : [1e0, 3],
             
             A : [1e0, 1],
-            Rg : [1e0, 2],
+            Rg : [1e0, 1],
             
             mu : [1e0, 1],
             g : [1e0, 2, "exp"],           
@@ -49,20 +49,21 @@ function crystal () {"use strict";
 
          //   hg : [1e0, 2],
             D : [1e0, 2],
-            eta : [1e-2, 2],
-            G : [1e-1, 2],
+            eta : [1e-2, 1],
+            G : [1e-1, 2]
         }
     }, function () {      
         var wires, designes, material, antenna, antennaAtLamda;
         
-        // проверка входных значений
+        // проверки
         this.check (this.f >= 1e5 && this.f <= 3e7, "f");
-              
-        // XXX ограничение на h, d
-        
+               
         // длина волны
         this.lambda = Phys.C / this.f;
-             
+
+        // проверка высоты
+        this.check (this.lead_h > 0 && this.lead_h < this.lambda * 0.75, "h");
+        
         // @formatter:off
         // полотно
         // http://en.wikipedia.org/wiki/Antenna_equivalent_radius
@@ -70,7 +71,9 @@ function crystal () {"use strict";
             '.' : function () {
                 // 1-wire
                 this.wire_N = 1;
-                this.wire_De = this.wire_d;            
+                this.wire_De = this.wire_d;
+                this.check (this.wire_d >= 0.1e-3, "d");  
+                this.check (this.wire_d <= this.lead_h / 1e1, "d_geometry");
             },
             ':' : function () {
                 // 2-wires
@@ -111,9 +114,7 @@ function crystal () {"use strict";
         
         wires [this.wire_design].call (this);            
         // @formatter:on
-        
-        this.check (this.lead_h > 0, "h");
-        
+               
         // конструкция 
         designes = {
             '|' : function () {
@@ -130,6 +131,9 @@ function crystal () {"use strict";
         antennaAtLamda = antenna.fn (this.lambda);
                
         this.S = this.lambda / this.wire_De;
+        
+        this.check (this.S > 1e3, "d");
+        
         this.W = antennaAtLamda.W;
         this.ZS = antennaAtLamda.ZSn;
         this.Z = antennaAtLamda.Z;
@@ -196,20 +200,24 @@ function crystal () {"use strict";
             Ea : [1e-3, 2],
             P : [1e0, 1, "exp"]
         }
-    }, function () {            
-        this.check (this.E <= 100, "E");    
+    }, function () {   
+        this.check (this.E <= 100 && this.E > 0, "E");    
         // э.д.с. эквивалентного генератора
         // вектор E считаем перпендикулярным земной поверхности
         // FIXME: обоснование 4
-        this.Ea = this.E * this.lambda * Math.sqrt (this.D * this.eta * this.Z.x / (4 * Phys.Z0 * Math.PI));
-        this.P = Math.pow (this.Ea, 2) / (4 * this.Z.x);
+        // this.Ea = this.E * this.lambda * Math.sqrt (this.D * this.eta * this.Z.x / (4 * Phys.Z0 * Math.PI));
+//        this.P = Math.pow (this.Ea, 2) / (4 * this.Z.x);
+        
+        
+        this.P = Math.pow (this.E * this.lambda / (2.0 * Math.PI), 2) * (this.D * this.eta) / (4 * Phys.Z0 / Math.PI);
+        this.Ea = Math.sqrt (4 * this.P * this.Z.x);
     });        
     
     // TODO: Учет диаграммы направленности
     antenna_impedance = Calc.calc ({
         name: "antenna-impedance",
         input : {
-            band : ["LW", "LW+MW", "MW", "MW+SW1", "SW1", "SW1+SW2", "SW2"],
+            band : ["LW", "LW+MW", "MW", "LW+MW+SW1", "SW1", "SW1+SW2", "SW2"],
             antennaZ : antenna.fnZ
         },
         output : {       
@@ -232,8 +240,8 @@ function crystal () {"use strict";
                 fmin: 500e3,
                 fmax: 2000e3
             },
-            'MW+SW1' : {
-                fmin: 500e3,
+            'LW+MW+SW1' : {
+                fmin: 100e3,
                 fmax: 10000e3
             },
             'SW1' : {
