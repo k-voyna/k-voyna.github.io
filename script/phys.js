@@ -10,5 +10,23 @@
     // заряд электрона [Кл]
     E0 : 1.60217646e-19,
     // радиус Земли
-    Re : 6378e3
+    Re : 6378e3,
+
+    // модель катушки идуктивности
+    fnInductor : function (f, L, Q) {
+        var result = [];
+        var XL = 2 * Math.PI * f * L;
+        result.Z = new Complex (XL / Q, XL);
+    
+        return result;
+    },
+
+    // модель конденсатора
+    fnCapacitor : function (f, C, Q) {
+        var result = [];
+        var XC = 1 / (2 * Math.PI * f * C);
+        result.Z = new Complex (XC / Q, -XC);
+    
+        return result;
+    }        
 };

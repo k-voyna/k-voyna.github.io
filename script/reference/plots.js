@@ -27,6 +27,24 @@ Plots = {
         };
     },        
     
+    logDB : function () {"use strict";
+        return {
+            color : "#225",
+            axisLabel : "Коэффициент усиления, дБи",
+            position : "left",/*
+            ticks : [[0, "0"],
+                     [-0.6, "-6"], 
+                     [-1, "-10"], 
+                     [-2, "-20"],
+                    ],
+                          
+            transform: function (y) {
+                return 10 * Math.log (y + 1e-12); 
+            },*/   
+            //max : 0
+        };
+    },          
+    
     logSWR : function () {"use strict";
         return {
             color : "#000000",
@@ -192,9 +210,9 @@ Plots = {
                 if (Math.abs (val) < 1e3) {
                     return val.toString ();
                 } else if (Math.abs (val) < 1e6) {
-                    return (val / 1e3).toString () + " к";
+                    return (val / 1e3).toString () + "к";
                 } else {
-                    return (val / 1e6).toString () + " М";
+                    return (val / 1e6).toString () + "М";
                 } 
             },            
             
@@ -215,7 +233,7 @@ Plots = {
                 if (Math.abs (val) < 1e3) {
                     return val;
                 } else {
-                    return (val / 1e3).toString () + " к";
+                    return (val / 1e3).toString () + "к";
                 }
             },
         };     
@@ -230,7 +248,7 @@ Plots = {
                 if (Math.abs (val) < 1e3) {
                     return val;
                 } else {
-                    return (val / 1e3).toString () + " к";
+                    return (val / 1e3).toString () + "к";
                 }
             },            
         };     

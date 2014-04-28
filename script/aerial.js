@@ -5,7 +5,7 @@ Antenna = {
         var arg, step, max;
 
         max = -Infinity;
-        step = (argMax - argMin) / 5000;
+        step = (argMax - argMin) / 1000;
         
         for (arg = argMin; arg < argMax; arg += step) {
             if (fn (arg) > max) {
@@ -220,7 +220,7 @@ function MonopoleRadiator (h, d, g, mu, A) {"use strict";
         result.RS = fnZ (lambda, function (lambda) { return 0; }).x;
         
         // КПД
-        // FIXME: врет при h~lambda
+        // FIXME: врет при h~lambda. Делить на модуль импеданса?
         result.eta = result.RS / result.Z.x;
         
         return result;
@@ -353,4 +353,76 @@ function aerialCalculate (aerial) {
 */       
     
     return aerial;
+}
+
+function MagneticLoop (S, p, l, d, N, g, mu) {"use strict";       
+    // сопротивление излучения
+    function fnRS (lambda) {
+        var hg = 2 * Math.PI * N * S / lambda;
+        return 800 * Math.pow (hg / lambda, 2);
+    }
+
+    // погонное сопротивление потерь
+    function fnR1 (lambda) {
+        return Antenna.fnWireLossResistance (lambda, d, g, mu);
+    }
+
+    function fnZL (lambda) {
+        return new Complex (0, N * N * Phys.Z0 * p / lambda * (Math.log (2.54 * p / d) - 2));
+    }
+    
+    function fnZ (lambda, fnR1) {
+        var Rl, RS, omega, XL, XC;
+        
+        RS = fnRS (lambda);
+        Rl = fnR1 (lambda) * l;
+        
+        return new Complex (RS + Rl, 0).sum (fnZL (lambda));
+    }    
+       
+    this.fn = function (lambda) {
+        var result;
+
+        result = {};
+        
+        result.R1 = fnR1 (lambda);
+/*       
+        // F (Theta) диаграмма направленности в вертикальной плоскости
+        result.fnF = function (Theta) {
+            var k = 2 * Math.PI / lambda;
+            return (Math.cos (k * h * Math.cos (Theta)) - Math.cos (k * h)) / Math.sin (Theta);
+        };
+        
+        // D (Theta) КНД
+        result.fnD = function (Theta) {
+            return (Phys.Z0 / Math.PI) * Math.pow (result.fnF (Theta), 2) / ZSn.x;
+        };
+        
+        // КНД макс.
+        // FIXME: упростить выражение
+        result.D = Phys.Z0 / Math.PI * Math.pow (Antenna.fnMaxFunctionValue (result.fnF, -Math.PI / 2, Math.PI / 2), 2) / ZSn.x;
+*/
+
+        // КНД
+        result.D = 1.5;
+       
+        // Zвх
+        result.Z = fnZ (lambda, fnR1);
+        
+        // Rизл.
+        result.RS = fnRS (lambda);
+        
+        // Rпот
+        result.Rl = l * result.R1;
+        
+        // КПД
+        result.eta = result.RS / result.Z.x;
+
+        // Э.Д.С. эквивалентного генератора
+        result.fnE = function (E) {
+            return E * lambda * Math.sqrt (result.D * result.eta * result.Z.x / (4 * Phys.Z0 * Math.PI));
+        };
+        
+        return result;
+    };
 }
