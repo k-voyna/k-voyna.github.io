@@ -88,7 +88,8 @@ td.calc-cell-notation {
 }
 
 table.calc-table .error input, table.calc-table tr.calc-message.error, input.error {
-    color: #B21;
+    color: #510;
+    font-weight: bold;
 }
 
 table.calc-table .error input, input.error {

@@ -321,4 +321,4 @@ Calc.calc = function (table, method) {"use strict";
 
     return data;
     // return !errors.length ? data : {};
-}
+};

@@ -28,5 +28,19 @@
         result.Z = new Complex (XC / Q, -XC);
     
         return result;
-    }        
+    }
+};
+
+// модель конденсатора
+function Capacitor (C, Q) {"use strict";
+	this.fnZ = function (f) {
+		return Phys.fnCapacitor (f, C, Q).Z;
+	};
+};
+
+// модель проводника
+function Conductor (R) {"use strict";
+	this.fnZ = function (f) {
+		return new Complex (R, 0);
+	};
 };
