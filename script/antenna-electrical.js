@@ -312,7 +312,7 @@ function crystal () {"use strict";
 			this.X = -antenna.Za.y;
 			this.Xmin = Cs.fnZ (this.f).sum (Phys.fnInductor (this.f, this.Lmin, this.QLmin).Z).y;
 			this.Xmax = Cs.fnZ (this.f).sum (Phys.fnInductor (this.f, this.Lmax, this.QLmax).Z).y;
-			this.suggest (this.X >= this.Xmin && this.X <= this.Xmax, "X");
+			this.check (this.X >= this.Xmin && this.X <= this.Xmax, "X");
 
 			this.Lx = Math.clamp (-antenna.Za.sum (Cs.fnZ (this.f)).y / omega, this.Lmin, this.Lmax);
 			this.QLx = this.QLmin + (this.Lx - this.Lmin) / (this.Lmax - this.Lmin) * (this.QLmax - this.QLmin);
@@ -425,7 +425,7 @@ function crystal () {"use strict";
 			this.X = -antenna.Za.sum (Phys.fnInductor (this.f, this.L, this.QL).Z).y;
 			this.Xmin = Phys.fnCapacitor (this.f, this.Cmin, this.QC).Z.y;
 			this.Xmax = Phys.fnCapacitor (this.f, this.Cmax, this.QC).Z.y;
-			this.suggest (this.X >= this.Xmin && this.X <= this.Xmax, "X");
+			this.check (this.X >= this.Xmin && this.X <= this.Xmax, "X");
 
 			this.Cx = Math.clamp (1 / (-this.X * omega), this.Cmin, this.Cmax);
 

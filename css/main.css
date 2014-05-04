@@ -29,6 +29,18 @@ ul {
     padding: 0;
 }
 
+h1 a {
+    text-decoration: none;
+}
+
+a {
+    color: #22a;
+}
+
+a:visited {
+    color: #222;
+}
+
 /* Calc [system] */
 table.calc-table {
     background-color: #FFE;
