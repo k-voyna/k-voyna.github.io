@@ -476,18 +476,15 @@ function crystal () {"use strict";
 
 		var circuitAtF = this.fnCircuitF (this.f);
 
-		// XXX: Характеристики при комплексном рассоглаовании
-
 		this.Zo = circuitAtF.ZL;
 		this.Rn = this.Zo.mod ();
 		this.Un = circuitAtF.fnU (this.E).mod () * this.kR;
 		this.Pn = this.Un * this.Un / this.R;
 
-		var p0 = Math.pow (this.lambda * this.Ea / (2 * Math.PI), 2) / (Phys.Z0 / Math.PI);
-		var k = 2 * Math.PI / this.lambda;
-
-		// 		this.delta = 2 * Math.PI * circuit.z.x / (circuit.zL.y + antennaAtLamda.W * k * this.he / (Math.pow (Math.sh (k * this.he), 2)));
-		//  	this.Qn = Math.PI / this.delta;
+		var p0 = Math.pow (this.lambda * this.E / (2 * Math.PI), 2) / (4 * Phys.Z0 / Math.PI);
+		// var k = 2 * Math.PI / this.lambda;
+		// this.delta = 2 * Math.PI * circuit.z.x / (circuit.zL.y + antennaAtLamda.W * k * this.he / (Math.pow (Math.sh (k * this.he), 2)));
+		// this.Qn = Math.PI / this.delta;
 		
 		this.Qn = circuitAtF.Qn;
 		this.KU = Math.log10 (this.Pn / p0);
@@ -529,7 +526,9 @@ function crystal () {"use strict";
 				var pmin = Math.pow (circuitMin.fnU (this.E).mod () * this.kR, 2) / this.R;
 				var pmax = Math.pow (circuitMax.fnU (this.E).mod () * this.kR, 2) / this.R;
 
-				Ux.push ( [freq, 10 * Math.log10 (px / p0)]);
+                var p0 = Math.pow (Phys.C / freq * this.E / (2 * Math.PI), 2) / (4 * Phys.Z0 / Math.PI);
+                
+				Ux.push   ( [freq, 10 * Math.log10 (px   / p0)]);
 				Umin.push ( [freq, 10 * Math.log10 (pmin / p0)]);
 				Umax.push ( [freq, 10 * Math.log10 (pmax / p0)]);
 			}
