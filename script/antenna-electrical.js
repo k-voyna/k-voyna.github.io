@@ -287,6 +287,8 @@ function crystal () {"use strict";
 			Zo : [1e3, 2, "complex"],
 			Eo : [1e0, 2],
 
+			za : [1e0, 2, "complex"],
+
 			Ea : [1e-3, 2],
 			Un : [1e-3, 2],
 			Pn : [1e0, 2, "exp"]
@@ -329,7 +331,7 @@ function crystal () {"use strict";
 				result.zRL = result.zL.par (result.zR);
 				result.z = result.zA.sum (result.zCs).sum (result.zRL);
 				result.ZL = result.zA.sum (result.zCs).par (result.zL);
-				result.Qn = result.zL.y / result.z.x;
+				result.Qn = result.zL.y / result.z.x; 
 
 				result.fnU = function (E) {
 					return new Complex (ae.fnE (E), 0).div (result.z).mul (result.zRL);
@@ -476,6 +478,7 @@ function crystal () {"use strict";
 
 		var circuitAtF = this.fnCircuitF (this.f);
 
+		this.za = circuitAtF.z;
 		this.Zo = circuitAtF.ZL;
 		this.Rn = this.Zo.mod ();
 		this.Un = circuitAtF.fnU (this.E).mod () * this.kR;

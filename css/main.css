@@ -1,6 +1,6 @@
 /* global */
 body {
-    background-color: #FFF;
+    background-color: #fff;
     font-family: tahoma, arial, sans-serif;
 }
 
@@ -43,10 +43,16 @@ a:visited {
 
 /* Calc [system] */
 table.calc-table {
-    background-color: #FFE;
-    border: 2px solid #111;
+    background-color: #f9f9f0;
+    border: 1px solid #222;
 }
-
+/*
+img, table.calc-table, .calc .plot {
+	-webkit-box-shadow: 2px 3px 3px 0px rgba(50, 50, 50, 0.13);
+	-moz-box-shadow:    2px 3px 3px 0px rgba(50, 50, 50, 0.13);
+	box-shadow:         2px 3px 3px 0px rgba(50, 50, 50, 0.13);
+}
+*/
 table.calc-table tr {
      border-top: dotted 1px #888; 
 }
@@ -86,8 +92,8 @@ td.calc-cell-notation {
 }
 
 .output {
-   background-color: #111;
-   color: #FFE; 
+   background-color: #1a1a1a;
+   color: #F9F9f0; 
 }       
 
 .optional {
@@ -100,7 +106,7 @@ td.calc-cell-notation {
 }
 
 table.calc-table .error input, table.calc-table tr.calc-message.error, input.error {
-    color: #510;
+    color: #800;
     font-weight: bold;
 }
 
