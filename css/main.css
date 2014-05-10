@@ -101,7 +101,7 @@ td.calc-cell-notation {
 }
 
 .reference {
-   background-color: #111;
+   background-color: #1a1a1a;
    color: #FFE; 
 }
 
@@ -115,7 +115,7 @@ table.calc-table .error input, input.error {
 }
 
 table.calc-table .warning input, .calc tr.calc-message.warning, table.calc-table tr.warning td.calc-cell-value {
-    color: orange;
+    color: #A42;
 }
 
 #calc-plot--broadcast-0 {
