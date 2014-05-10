@@ -46,6 +46,7 @@ function crystal () {"use strict";
             // part 2
             Pn : [1e0, 1, "exp"],
             Ea : [1e-3, 2],
+            Ee : [1e-3, 2],
             Cmin : [1e-12, 2],
             Cmax : [1e-12, 2],
             Ct : [1e-12, 2],
@@ -157,6 +158,7 @@ function crystal () {"use strict";
         var p0 = Math.pow (this.lambda * this.E / (2 * Math.PI), 2) / (4 * Phys.Z0 / Math.PI);
         var circuit = this.fnCircuit (this.f, this.R);
                
+        this.Ee = this.fnCircuit (this.f, 1e12).fnU (this.E).mod ();
         this.rC = circuit.zC.x;
         this.Qn = -circuit.zC.y / circuit.z.x;
         this.dF = this.f / this.Qn;
