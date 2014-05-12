@@ -116,7 +116,6 @@ function crystal () {"use strict";
         this.Rl = antennaAtLambda.Rl;
         this.Za = antennaAtLambda.Z;
         this.D = antennaAtLambda.D;  
-        this.p = Math.PI * this.d;
 
         this.omega = 2 * Math.PI * this.f;        
         this.C = 1 / (this.omega * this.Za.y);
@@ -126,6 +125,8 @@ function crystal () {"use strict";
         // this.Q = 3 * Math.log (this.d / this.wire_d) * Math.pow (this.lambda / this.p, 3) / Math.PI * this.eta;        
         this.G = Math.log10 (this.D * this.eta);
 
+        // TODO: Собственная емкость и индуктивность
+        
         // -------------------------------------------------------
         var capacitor;
         capacitor = Capacitors [this.Ctype];

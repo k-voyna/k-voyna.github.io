@@ -10,7 +10,6 @@ function crystal () {"use strict";
         name: "antenna",
         input : {
             f : [1e3], 
-            design : ["|", "/", "Г", "T", "U"],
             
             // leadin
             lead_h: [1e0],
@@ -28,7 +27,10 @@ function crystal () {"use strict";
         },
         output : {       
             lambda : [1e0, 3],
-        //  wire_De : [1e-3, 2],
+            wire_De : [1e-3, 2],
+             
+            Ca: [1e-12, 2],
+            La: [1e-6, 2],
              
             W : [1e0, 2],
             W1 : [1e0, 2, "complex"],
@@ -62,7 +64,7 @@ function crystal () {"use strict";
         this.lambda = Phys.C / this.f;
 
         // проверка высоты
-        this.check (this.lead_h > 0 && this.lead_h < this.lambda * 0.75, "h");
+        this.check (this.lead_h > 0 && this.lead_h < this.lambda * 0.75, "lead_h");
         
         // @formatter:off
         // полотно
@@ -72,68 +74,86 @@ function crystal () {"use strict";
                 // 1-wire
                 this.wire_N = 1;
                 this.wire_De = this.wire_d;
-                this.check (this.wire_d >= 0.1e-3, "d");  
-                this.check (this.wire_d <= this.lead_h / 1e1, "d_geometry");
+                this.check (this.wire_d >= 0.1e-3 && this.wire_d < 0.0005 * this.lambda, "wire_d");  
+                this.check (this.lambda / this.wire_De > 1e3, "wire_d");                
             },
             ':' : function () {
                 // 2-wires
                 this.wire_N = 2;
-                this.wire_De = 2 * Math.sqrt (this.wire_d / 2 * this.wire_s);            
+                this.wire_De = 2 * Math.sqrt (this.wire_d / 2 * this.wire_s);
+                
+                this.check (this.wire_d >= 0.1e-3 && this.wire_d < 0.0005 * this.lambda, "wire_d");  
+                this.check (this.wire_s >= this.wire_d * 2 && this.wire_s <= 0.02 * this.lead_h, "wire_s");
             }, 
             '.:' : function () {
                 // 3 wires
                 this.wire_N = 3;
                 this.wire_De = 2 * Math.pow (this.wire_d / 2 * Math.pow (this.wire_s, 2), 1 / 3);           
+                
+                this.check (this.wire_d >= 0.1e-3 && this.wire_d < 0.0005 * this.lambda, "wire_d");  
+                this.check (this.wire_s >= this.wire_d * 2 && this.wire_s <= 0.02 * this.lead_h, "wire_s");
             }, 
             '::' : function () {
                 // 4 wires
                 this.wire_N = 4;
                 this.wire_De = 2 * Math.pow (Math.SQRT2 * this.wire_d / 2 * Math.pow (this.wire_s, 3), 1 / 4);
+                
+                this.check (this.wire_d >= 0.1e-3 && this.wire_d < 0.0005 * this.lambda, "wire_d");  
+                this.check (this.wire_s >= this.wire_d * 2 && this.wire_s <= 0.02 * this.lead_h, "wire_s");
             },
             '.::' : function () {
                 // 5 wires
                 this.wire_N = 5;
                 this.wire_De = 2 * Math.pow (2.62 * this.wire_d / 2 * Math.pow (this.wire_s, 4), 1 / 5);
+                
+                this.check (this.wire_d >= 0.1e-3 && this.wire_d < 0.0005 * this.lambda, "wire_d");  
+                this.check (this.wire_s >= this.wire_d * 2 && this.wire_s <= 0.02 * this.lead_h, "wire_s");
             }, 
             '*' : function () {
                 // 6-wires
                 this.wire_N = 6;
                 this.wire_De = 2 * Math.pow (6 * this.wire_d / 2 * Math.pow (this.wire_s, 5), 1 / 6);
+                
+                this.check (this.wire_d >= 0.1e-3, "wire_d");                
+                this.check (this.wire_s >= this.wire_d * 2 && this.wire_s <= 0.02 * this.lead_h, "wire_s");
             }, 
             'N' : function () {
                 // N-wires
                 this.wire_De = 2 * Math.pow (this.wire_N * this.wire_d / 2, 1 / this.wire_N) * Math.pow (this.wire_D / 2, 1 - 1 / this.wire_N);
+                this.wire_s = this.wire_D * Math.PI / this.wire_N;
+                
+                this.check (this.wire_N >= 6, "wire_N");
+                this.check (this.wire_d >= 0.1e-3 && this.wire_d < 0.0005 * this.lambda, "wire_d"); 
+                this.check (this.wire_s > 2 * this.wire_d, "wire_D");
+                this.check (this.wire_s <= 0.02 * this.lead_h, "wire_D1");
             }, 
             '_' : function () {
                 // flat
                 this.wire_N = 1;
                 this.wire_De = 2 * this.wire_w * Math.exp (-3 / 2);
                 this.wire_d = 2 * this.wire_w / Math.PI;
+                
+                this.check (this.wire_w >= 1e-3 && this.wire_w < 0.001 * this.lambda, "wire_w");
             }
         };
         
         wires [this.wire_design].call (this);            
         // @formatter:on
-               
-        // конструкция 
-        designes = {
-            '|' : function () {
-                this.h = this.lead_h;
-            }      
-        };
+
+        this.check (this.wire_De <= this.lead_h / 3e1, "geometry");
         
-        designes [this.design].call (this);
+        // конструкция 
         material = Materials [this.wire_material];
         this.g = material.g;
         this.mu = material.mu;
         this.A = this.ground;                       
-        antenna = new MonopoleRadiator (this.h, this.wire_De, this.g, this.mu, this.A);
+        this.h = this.lead_h;
+                
+        antenna = new MonopoleRadiator (this.h, this.wire_De, this.wire_d, this.wire_N, this.g, this.mu, this.A);
         antennaAtLamda = antenna.fn (this.lambda);
                
         this.S = this.lambda / this.wire_De;
-        
-        this.check (this.S > 1e3, "d");
-        
+
         this.W = antennaAtLamda.W;
         this.ZS = antennaAtLamda.ZSn;
         this.Z = antennaAtLamda.Z;
@@ -153,6 +173,9 @@ function crystal () {"use strict";
         this.fnZ = function (lambda) {
             return antenna.fn (lambda).Z;
         };
+ 
+ 		this.Ca = 1 / (2 * Math.PI * 1e3 * (-this.fnZ (Phys.C / 1e3).y));
+		this.La = Math.pow (this.W, 2) * this.Ca;
  
         var F, Theta, phi, rho;        
         F = [];
@@ -185,6 +208,51 @@ function crystal () {"use strict";
                 }
                 },
             0);
+            
+        var R, X, freq, Z, fmin, fmax, fdelta, bands;
+        R = [];
+        X = [];
+
+		if (this.f < 5e5) {
+			fmin = 1e5;
+			fmax = 5e5;
+		} else if (this.f >= 5e5 && this.f < 2e6) {
+			fmin = 1e5;
+			fmax = 2e6;
+		} else if (this.f >= 2e6 && this.f < 3e6) {
+			fmin = 2e6;
+			fmax = 10e6;
+		} else if (this.f >= 3e6 && this.f < 10e6) {
+			fmin = 3e6;
+			fmax = 15e6;
+		} else if (this.f >= 10e6) {
+			fmin = 10e6;
+			fmax = 30e6;
+		}
+              
+        fdelta = (fmax - fmin) / 200.0;
+         
+        for (freq = fmin; freq <= fmax; freq += fdelta) {
+            Z = this.fnZ (Phys.C / freq);
+            R.push ([freq, Z.x]);
+            X.push ([freq, Z.y]);
+        }     
+              
+        var options1;
+        options1 = {           
+            xaxis: Plots.linFx (fmin, fmax),
+            yaxes: [Plots.linRx (), Plots.linXx ()],
+            legend: {
+                show: true,
+                noColumns : 2,
+                position: "nw"
+            }
+        };
+    
+        this.plot ([
+            Plots.dataC (R,  "R", 1),
+            Plots.dataB (X, "jX", 2) 
+        ], options1, 1);            
     });
     
     antenna_power = Calc.calc ({
@@ -214,76 +282,6 @@ function crystal () {"use strict";
     });        
     
     // TODO: Учет диаграммы направленности
-    antenna_impedance = Calc.calc ({
-        name: "antenna-impedance",
-        input : {
-            band : ["LW", "LW+MW", "MW", "LW+MW+SW1", "SW1", "SW1+SW2", "SW2"],
-            antennaZ : antenna.fnZ
-        },
-        output : {       
-        }
-    }, function () {      
-        var R, X, freq, Z, fmin, fmax, fdelta, bands;
-        R = [];
-        X = [];
-
-        bands = {
-            'LW' : {
-                fmin: 100e3,
-                fmax: 300e3
-            },
-            'LW+MW' : {
-                fmin: 100e3,
-                fmax: 2000e3
-            },
-            'MW' : {
-                fmin: 500e3,
-                fmax: 2000e3
-            },
-            'LW+MW+SW1' : {
-                fmin: 100e3,
-                fmax: 10000e3
-            },
-            'SW1' : {
-                fmin: 3e6,
-                fmax: 10e6
-            },
-            'SW1+SW2' : {
-                fmin: 3e6,
-                fmax: 30e6
-            },
-            'SW2' : {
-                fmin: 10e6,
-                fmax: 30e6
-            },           
-        };
-              
-        fmin = bands [this.band].fmin;
-        fmax = bands [this.band].fmax;
-        fdelta = (fmax - fmin) / 100.0;
-         
-        for (freq = fmin; freq <= fmax; freq += fdelta) {
-            Z = this.antennaZ (Phys.C / freq);
-            R.push ([freq, Z.x]);
-            X.push ([freq, Z.y]);
-        }     
-              
-        var options1;
-        options1 = {           
-            xaxis: Plots.linFx (fmin, fmax),
-            yaxes: [Plots.linRx (), Plots.linXx ()],
-            legend: {
-                show: true,
-                noColumns : 2,
-                position: "nw"
-            }
-        };
-    
-        this.plot ([
-            Plots.dataC (R,  "R", 1),
-            Plots.dataB (X, "jX", 2) 
-        ], options1);
-    });
 }
 
 $ (document).ready (function () {"use strict";

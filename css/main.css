@@ -4,6 +4,14 @@ body {
     font-family: tahoma, arial, sans-serif;
 }
 
+p.footer  {
+    text-align: center;
+}
+
+.footer a { 
+    text-decoration: none;
+}
+
 #main {
     width: 800px;
     margin: 0 auto;

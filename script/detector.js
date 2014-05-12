@@ -507,6 +507,8 @@ function crystal () {"use strict";
                
         // XXX: Проверить LC
 
+        // TODO: Согласование по нагрузке ПТ
+        // TODO: Согласование по мощности ЗЧ
         // TODO: momega=f(Omega)
         // TODO: Rвх=f(Um)
         // TODO: КНИ: gamma = sqrt (Sum (Jm2Omage^2 + ...) / JmOmega^2)

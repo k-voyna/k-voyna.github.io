@@ -148,13 +148,13 @@ Antenna = {
 	}
 };
 
-function MonopoleRadiator (h, d, g, mu, A) {"use strict";
+function MonopoleRadiator (h, D, d, N, g, mu, A) {"use strict";
 	// TODO: Проверки входных величин
 
 	var W, f0, lambda0;
 
 	// волновое сопротивление
-	W = Antenna.fnWireWaveImpedance (h, d);
+	W = Antenna.fnWireWaveImpedance (h, D);
 
 	// сопротивление излучения
 	function fnZSn (lambda) {
@@ -163,7 +163,7 @@ function MonopoleRadiator (h, d, g, mu, A) {"use strict";
 
 	// погонное сопротивление потерь
 	function fnR1 (lambda) {
-		return Antenna.fnWireLossResistance (lambda, d, g, mu);
+		return Antenna.fnWireLossResistance (lambda, d, g, mu) / N;
 	}
 
 	// погонное сопротивление излучения
@@ -313,7 +313,7 @@ function MagneticLoop (S, p, l, d, N, g, mu) {"use strict";
 	function fnR1 (lambda) {
 		return Antenna.fnWireLossResistance (lambda, d, g, mu);
 	}
-
+   
 	function fnZL (lambda) {
 		return new Complex (0, N * N * Phys.Z0 * p / lambda * (Math.log (2.54 * p / d) - 2));
 	}
@@ -333,7 +333,7 @@ function MagneticLoop (S, p, l, d, N, g, mu) {"use strict";
 		result = {};
 
 		result.R1 = fnR1 (lambda);
-
+       
 		// КНД
 		result.D = 1.5;
 

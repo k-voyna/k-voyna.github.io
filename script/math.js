@@ -148,3 +148,17 @@ Math.interpolate = function (fx, x) {"use strict";
     
     return fx [iout][1] + (fx [iout + 1][1] - fx [iout][1]) * (x - fx [iout][0]) / (fx [iout + 1][0] - fx [iout][0]);
 };
+
+/* интеграл */
+Math.integrate = function (fx, a, b, n) {"use strict";  
+    var S = 0;
+    var dx = (b - a) / n;
+    var x = a;
+        
+    for (var i = 0; i < n; ++i) {
+        S += fx (x) * dx;
+        x += dx;
+    }
+    
+    return S;
+};
