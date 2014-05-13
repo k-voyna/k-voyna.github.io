@@ -18,11 +18,11 @@ Grounds = {
     },
     'dry soil' : {
         sigma : 0.003,
-        eps : 10
+        eps : 5
     },
     'wet soil' : {
         sigma : 0.01,
-        eps : 30
+        eps : 20
     },
     'fresh water' : {
         sigma : 0.001,
@@ -31,5 +31,9 @@ Grounds = {
     'sea water' : {
         sigma : 4,
         eps : 80
+    },
+    'ideal' : {
+        sigma : Infinity,
+        eps : 1
     }
 };

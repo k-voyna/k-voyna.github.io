@@ -151,14 +151,22 @@ Math.interpolate = function (fx, x) {"use strict";
 
 /* интеграл */
 Math.integrate = function (fx, a, b, n) {"use strict";  
-    var S = 0;
-    var dx = (b - a) / n;
-    var x = a;
+    if (a >= b)
+        return 0;
+
+    var k = (b - a) / (2 * n);
+
+    function fi (i) {
+        return fx (a + k * i);
+    };
+
+    var Ie = 0;
+    var Io = fi (1);
         
-    for (var i = 0; i < n; ++i) {
-        S += fx (x) * dx;
-        x += dx;
+    for (var i = 2; i <= n; ++i) {
+        Io += fi (2 * i - 1);
+        Ie += fi (2 * i - 2);
     }
-    
-    return S;
+        
+    return (b - a) / (6 * n) * (fi (0) + fi (2 * n) + 4 * Io + 2 * Ie + fi (2 * n));
 };

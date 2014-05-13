@@ -27,7 +27,7 @@ function crystal () {"use strict";
 			wire_N : [],
 
 			// ground
-			ground : [7, 4, 2, 0.5, 0],
+			ground : [7 * 1.5, 4, 2, 0.5, 0],
 
 			// power & load
 			E : [1e-3],
