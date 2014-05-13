@@ -279,7 +279,7 @@ function MonopoleRadiator (h, D, d, N, g, mu, ground) {"use strict";
 }
 
 function IdealMonopoleRadiator (h, d) {"use strict";
-	return new MonopoleRadiator (h, d, Infinity, 1, 0);
+	return new MonopoleRadiator (h, d, Infinity, 1, 1, 0, new IdealGround ());
 }
 
 function IdealIsotropicRadiator () {"use strict";

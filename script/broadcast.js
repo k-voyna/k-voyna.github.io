@@ -98,7 +98,7 @@ function crystal () {"use strict";
             return E0 * A;
         }
       
-        ground = Grounds [this.ground];
+        var ground = Grounds [this.ground];
         this.sigma = ground.sigma;
         this.eps = ground.eps;
         this.E0 = fnE0 (this.P, this.D, antenna.fnD, Math.PI / 2);
