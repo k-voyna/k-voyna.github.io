@@ -213,37 +213,8 @@ function crystal () {"use strict";
             }, 
         1);
         
-        // расчет диаграммы направленности                
-        F = [];
-        for (Theta = -90; Theta < 90; Theta += 0.1) {
-            phi = Theta / 180 * Math.PI;
-            rho = antenna.fnD (phi) / antenna.D;
-
-            F.push ([rho * Math.sin (phi), rho * Math.cos (phi)]);
-        }
-
-        this.plot (
-            [{
-                data : F, 
-                label: "D=" + (10 * Math.log10 (antenna.D)).toPrecision (3) + " dBi",
-                color : "#00F", 
-                shadowSize : 0
-            }], {
-                xaxis: {
-                    color : "#000000",
-                    min : -1,
-                    max : 1,
-                    ticks : []
-                },
-            
-                yaxis: {
-                    color : "#000000",
-                    min : 0,
-                    max : 1, 
-                    ticks : []
-                }
-                },
-            0);
+        // расчет диаграммы направленности           
+        this.plot (Plots.radiationPatternData (antenna.fnD, antenna.D), Plots.radiationPatternAxes (), 0);            
     });
 }
 

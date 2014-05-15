@@ -188,6 +188,7 @@ Plots = {
     },    
     linFx : function (fmin, fmax) {"use strict";
         return {           
+        /*
             ticks: function (axis) {
                 var ticks = [];
  
@@ -203,12 +204,10 @@ Plots = {
                 
                 return ticks;
             },
-            
-            // FIXME: 10E10
-            // FIXME: 0.17500000000000002
+            */
             tickFormatter : function formatter (val, axis) {
                 if (Math.abs (val) < 1e3) {
-                    return val.toString ();
+                    return val.toFixed (axis.tickDecimals);
                 } else if (Math.abs (val) < 1e6) {
                     return (val / 1e3).toString () + "к";
                 } else {
@@ -218,7 +217,6 @@ Plots = {
             
             min : fmin,
             max : fmax,            
-            
             axisLabel: "Частота, Гц",                        
             color : "#000000"
         };     
@@ -228,10 +226,9 @@ Plots = {
             axisLabel: "Активное сопротивление, Ом",
             color : "#000",
             position: "left",
-            
             tickFormatter : function formatter (val, axis) {
                 if (Math.abs (val) < 1e3) {
-                    return val;
+                    return val.toFixed (axis.tickDecimals);
                 } else {
                     return (val / 1e3).toString () + "к";
                 }
@@ -243,14 +240,13 @@ Plots = {
             axisLabel: "Реактивное сопротивление, Ом",
             color : "#22C",
             position: "right",
-            
             tickFormatter : function formatter (val, axis) {
                 if (Math.abs (val) < 1e3) {
-                    return val;
+                    return val.toFixed (axis.tickDecimals);
                 } else {
-                    return (val / 1e3).toString () + "к";
+                    return (val.toFixed (axis.tickDecimals) / 1e3).toString () + "к";
                 }
-            },            
+            }
         };     
     },    
     linU : function () {"use strict";
@@ -314,5 +310,115 @@ Plots = {
             label: label,
             shadowSize : 2
         };
+    },
+    
+    band : function (f, flim) {"use strict";
+        var fmin, fmax;
+
+		if (f < 1e4) {
+			fmin = 1e3;
+			fmax = 1e4;
+		} else if (f >= 1e4 && f < 1e5) {
+			fmin = 1e4;
+			fmax = 1e5;            
+		} else if (f >= 1e5 && f < 5e5) {
+			fmin = 1e5;
+			fmax = 5e5;
+		} else if (f >= 5e5 && f < 1.8e6) {
+			fmin = 4e5;
+			fmax = 2e6;
+		} else if (f >= 1.8e6 && f < 5e6) {
+			fmin = 1e6;
+			fmax = 6e6;
+		} else if (f >= 5e6 && f < 10e6) {
+			fmin = 3e6;
+			fmax = 15e6;
+		} else if (f >= 10e6 && f < 20e6) {
+			fmin = 10e6;
+			fmax = 24e6;            
+		} else if (f >= 20e6) {
+			fmin = 15e6;
+			fmax = 30e6;
+		}
+        
+        if (flim !== undefined || isNaN (flim)) {
+            fmax = Math.min (fmax, flim);
+            fmax = Math.max (fmax, fmin);
+            fmax = Math.round (fmax / fmin) * fmin;
+            
+            if (fmin === fmax || isNaN (fmax) || isNaN (fmin)) {
+                fmin = f / (1 + 1 / 8);  
+                fmax = f * (1 + 1 / 8);  
+            }            
+        } 
+                       
+        return [fmin, fmax];
+    },
+    
+    impedanceResponseData : function (fnZ, ff, nsteps) {"use strict";
+        var fmin = ff [0];
+        var fmax = ff [1];
+        
+        var fdelta = (fmax - fmin) / nsteps;
+        var R = [];
+        var X = [];
+        for (var freq = fmin; freq <= fmax; freq += fdelta) {
+            var Z = fnZ (freq);
+            R.push ([freq, Z.x]);
+            X.push ([freq, Z.y]);
+        }
+        
+        return [
+            Plots.dataC (R,  "R", 1),
+            Plots.dataB (X, "jX", 2) 
+        ];
+    },
+    
+    impedanceResponseAxes : function (ff) {"use strict";
+        return {
+            xaxis: Plots.linFx (ff [0], ff [1]),
+            yaxes: [Plots.linRx (), Plots.linXx ()],
+            legend: {
+                show: true,
+                noColumns : 2,
+                position: "nw"
+            }
+        };
+    },
+
+    radiationPatternData : function (fnD, D) {"use strict";
+        var F = [];
+        for (var Theta = -90; Theta < 90; Theta += 0.1) {
+            var phi = Theta / 180 * Math.PI;
+            var rho = fnD (phi) / D;
+
+            F.push ([rho * Math.sin (phi), rho * Math.cos (phi)]);
+        }    
+    
+        return [{
+            data : F, 
+            label: "D=" + (10 * Math.log10 (D)).toPrecision (3) + " дБи",
+            color : "#11F",
+            shadowSize : 0
+        }];
+    },
+    
+    radiationPatternAxes: function () {"use strict";
+        return {
+            xaxis: {
+                color : "#000",
+                min : -1,
+                max : 1,
+                ticks : []
+            },
+            yaxis: {
+                color : "#000",
+                min : 0,
+                max : 1, 
+                ticks : []
+            }
+        };
     }
 };
+
+// XXX: align left & right axis

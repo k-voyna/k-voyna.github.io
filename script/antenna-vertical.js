@@ -28,7 +28,6 @@ function crystal () {"use strict";
             ground_s : [1e-2],
             ground_type : ['polar ice', 'sandy soil', 'dry soil', 'wet soil', 'fresh water', 'sea water'],
             ground_system : ['_', '|', 'O'],
-            ground_material : ["Perfect", "Cu", "Cu+Sn", "Al", "Zn"], 
             ground_n : [],
             ground_rho : [1e-3],
             ground_A : [1e0]
@@ -49,13 +48,12 @@ function crystal () {"use strict";
             lambda0 : [1e0, 3],
             f0 : [1e+6, 3],
             V : [1e0, 3],
+            hy : [1e0, 2],
             
             sigma : [1e+0, 1, "exp"],
             eps : [1e+0, 1],
             Rg : [1e0, 2],
-            Rgn : [1e0, 2, "complex"],
             Sg : [1e0, 2],
-
             RS : [1e0, 2],
             
             mu : [1e0, 1],
@@ -66,7 +64,7 @@ function crystal () {"use strict";
             eta : [1e-2, 2],
             G : [1e-1, 2]
         }
-    }, function () {       
+    }, function () {   
         // проверки
         this.check (this.f >= 1e3 && this.f <= 3e7, "f");
                
@@ -76,7 +74,7 @@ function crystal () {"use strict";
         this.h = this.lead_h;
         
         // проверка высоты
-        this.check (this.lead_h > 0 && this.lead_h < this.lambda * 0.75, "lead_h");
+        this.check (this.lead_h > 0 && this.lead_h < this.lambda, "lead_h");
         
         var KDLAMBDA = 0.005; // максимальное утолщение по диаметру
         var KDEH = 0.03; // максимальное утолщение по эквивалентному диаметру
@@ -178,16 +176,15 @@ function crystal () {"use strict";
             this.check (this.ground_a >= 0.001, "ground_a");
             this.check (this.ground_l >= 0.05 && this.ground_l <= 3, "ground_l");
 
-            ground = new StiftGround (this.h, this.sigma, this.eps, this.ground_a, this.ground_l);
+            ground = new ElectrodeGround (this.sigma, this.eps, this.ground_a, this.ground_l);
         } else {
             this.check (this.ground_s >= 0.05 && this.ground_s <= 3, "ground_s");
             this.check (this.ground_A >= 1.0, "ground_A");
             this.check (this.ground_rho >= 0.0001 && this.ground_rho <= this.ground_A / 10, "ground_rho1");
             this.check (this.ground_rho < this.ground_s, "ground_rho2");
             this.check (this.ground_n > 0, "ground_n");
-        
-            var gm = Materials [this.ground_material];       
-            ground = new RadialGround (this.h, this.sigma, this.eps, this.ground_s, this.ground_A, this.ground_rho, this.ground_n, gm.g);
+
+            ground = new RadialGround (this.sigma, this.eps, this.ground_s, this.ground_A, this.ground_rho, this.ground_n);
         }
 
         var antenna = new MonopoleRadiator (this.h, this.wire_De, this.wire_d, this.wire_N, this.g, this.mu, ground);
@@ -202,9 +199,8 @@ function crystal () {"use strict";
         this.W1 = antennaAtLamda.W1;
         this.R1 = antennaAtLamda.R1;
         this.Sg = antennaAtLamda.Sg;
-        this.Rg = antennaAtLamda.Rg;
-        this.RS = antennaAtLamda.RS;
-        this.Rgn = antennaAtLamda.Zgn;
+        this.Rg = antennaAtLamda.Zgn.x;
+        this.RS = antennaAtLamda.ZSn.x;
         
         this.eta = antennaAtLamda.eta;
         this.D = antennaAtLamda.D;
@@ -213,99 +209,19 @@ function crystal () {"use strict";
         this.f0 = antennaAtLamda.f0;
         this.lambda0 = antennaAtLamda.lambda0;
         this.V = (4 * this.h) / this.lambda0;
+        this.hy = this.h / this.lambda;
         
-        this.fnZ = function (lambda) {
-            return antenna.fn (lambda).Z;
+        this.fnZ = function (freq) {
+            return antenna.fn (Phys.C / freq).Z;
         };
  
  		this.Ca = antennaAtLamda.C;
 		this.La = antennaAtLamda.L;
- 
-        var F, Theta, phi, rho;        
-        F = [];
-        for (Theta = -90; Theta < 90; Theta += 0.1) {
-            phi = Theta / 180 * Math.PI;
-            rho = antennaAtLamda.fnD (phi) / antennaAtLamda.D;
 
-            F.push ([rho * Math.sin (phi), rho * Math.cos (phi)]);
-        }
-             
-        this.plot (
-            [{
-                data : F, 
-                label: "D=" + (10 * Math.log10 (antennaAtLamda.D)).toPrecision (3) + " дБи",
-                color : "#00F", 
-                shadowSize : 0
-            }], {
-                xaxis: {
-                    color : "#000000",
-                    min : -1,
-                    max : 1,
-                    ticks : []
-                },
-            
-                yaxis: {
-                    color : "#000000",
-                    min : 0,
-                    max : 1, 
-                    ticks : []
-                }
-                },
-            0);
-            
-        var R, X, freq, Z, fmin, fmax, fdelta, bands;
-        R = [];
-        X = [];
+        this.plot (Plots.radiationPatternData (antennaAtLamda.fnD, antennaAtLamda.D), Plots.radiationPatternAxes (), 0);
 
-		if (this.f < 1e4) {
-			fmin = 1e3;
-			fmax = 1e4;
-		} else if (this.f >= 1e4 && this.f < 1e5) {
-			fmin = 1e4;
-			fmax = 1e5;            
-		} else if (this.f >= 1e5 && this.f < 5e5) {
-			fmin = 1e5;
-			fmax = 5e5;
-		} else if (this.f >= 5e5 && this.f < 1.8e6) {
-			fmin = 4e5;
-			fmax = 2e6;
-		} else if (this.f >= 1.8e6 && this.f < 5e6) {
-			fmin = 1e6;
-			fmax = 6e6;
-		} else if (this.f >= 5e6 && this.f < 10e6) {
-			fmin = 3e6;
-			fmax = 15e6;
-		} else if (this.f >= 10e6 && this.f < 20e6) {
-			fmin = 10e6;
-			fmax = 24e6;            
-		} else if (this.f >= 20e6) {
-			fmin = 15e6;
-			fmax = 30e6;
-		}
-              
-        fdelta = (fmax - fmin) / 100.0;
-         
-        for (freq = fmin; freq <= fmax; freq += fdelta) {
-            Z = this.fnZ (Phys.C / freq);
-            R.push ([freq, Z.x]);
-            X.push ([freq, Z.y]);
-        }     
-              
-        var options1;
-        options1 = {           
-            xaxis: Plots.linFx (fmin, fmax),
-            yaxes: [Plots.linRx (), Plots.linXx ()],
-            legend: {
-                show: true,
-                noColumns : 2,
-                position: "nw"
-            }
-        };
-    
-        this.plot ([
-            Plots.dataC (R,  "R", 1),
-            Plots.dataB (X, "jX", 2) 
-        ], options1, 1);            
+        var band = Plots.band (this.f, 1e9);
+        this.plot (Plots.impedanceResponseData (this.fnZ, band, 200), Plots.impedanceResponseAxes (band), 1);
     });
     
     antenna_power = Calc.calc ({

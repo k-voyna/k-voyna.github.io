@@ -90,8 +90,10 @@ Antenna = {
 		return (Phys.Z0 / Math.PI) * (Math.log (l / (d / 2)) - 1) / 2;
 	},
 
-	fnWireWaveImpedanceV2 : function (lambda, d) {"use strict";
-		return (Phys.Z0 / Math.PI) * (Math.log (lambda / (d / 2)) - Math.GAMMA) / 2;
+	fnWireWaveImpedanceV2 : function (l, d, lambda) {"use strict";
+		return l <= lambda / 2
+            ? (Phys.Z0 / Math.PI) * (Math.log (l / (d / 2)) - 1) / 2
+            : (Phys.Z0 / Math.PI) * (Math.log (lambda / (d / 2)) - Math.GAMMA) / 2;
 	},
     
 	fnDipoleRadiationImpedance : function (lambda, l) {"use strict";
@@ -124,6 +126,44 @@ Antenna = {
 
 		return new Complex (RS0, XS0);
 	},
+    
+	fnLoadedMonopoleRadiationResistance : function (lambda, l, le, be) {"use strict";
+		var Ci2x, Ci4x, Si2x, Si4x, sin2x, cos2x, lnx, ln2x;
+
+        var k = 2 * Math.PI / lambda;
+		var x = k * l;
+        var xe = k * le;
+
+		// чтобы не зависнуть
+		if (x > 1000) {
+			return new Complex (NaN, NaN);
+		}
+
+		Ci2x = Math.Ci (2 * x);
+		Ci4x = Math.Ci (4 * x);
+		Si2x = Math.Si (2 * x);
+		Si4x = Math.Si (4 * x);
+
+		sin2x = Math.sin (2 * x);
+		cos2x = Math.cos (2 * x);
+		lnx = Math.log (x);
+		ln2x = Math.log (2 * x);
+
+		var W = Phys.Z0 / (4 * Math.PI);
+
+        // Надененко, с 281.
+        var sinpsi = Math.sin (k * be);
+        var sinxe = Math.sin (xe);
+        var cos2xe = Math.cos (2 * xe);
+        var sin2xe = Math.sin (2 * xe);
+        var ln2 = Math.log (2);
+        
+        var A1 = cos2xe * (Math.GAMMA + lnx + Ci4x - 2 * Ci2x) / 2;
+        var A2 = sin2xe * (Si4x - 2 * Si2x) / 2;
+        var A3 = Math.GAMMA + ln2x - Ci2x + Math.pow (sinpsi, 2) * (sin2x / (2 * x) - 1);
+        
+		return W * (A1 + A2 + A3);
+	},    
 
 	fnWireLossResistance : function (lambda, d, g, mu) {"use strict";
 		return 5.5 / (d / 2) * Math.sqrt (mu / (g * lambda));
@@ -147,16 +187,20 @@ Antenna = {
 		return Z0.mul (Z1).div (Z2);
 	},
 
-	fnLossyOpenedTransmissionLineInputImedance : function (W1, l, alpha, beta) {"use strict";
-		return W1.mul (alpha.sum (new Complex (0, beta)).mul (new Complex (l, 0)).cth ());
+	// эквивалентное волновое сопротивление
+	fnLossyTransmissionLineWaveImpedance : function (W, beta, k) {
+		return new Complex (W, 0).mul (beta.div (new Complex (k, 0)).mul (new Complex (0, -1)).sum (new Complex (1, 0)));
+	},
+    
+	fnLossyOpenedTransmissionLineInputImedance : function (W, l, beta, k) {"use strict";
+		return W.mul (beta.sum (new Complex (0, k)).mul (new Complex (l, 0)).cth ());
 	}
 };
 
 function MonopoleRadiator (h, D, d, N, g, mu, ground) {"use strict";
-	// TODO: Проверки входных величин
-	// волновое сопротивление      
+	// TODO: Проверки входных величин   
     function fnZGn (lambda) {
-        return ground.fn (lambda).Zn;
+        return ground.fn (lambda, h, h, 0).Zn;
     }    
     
     function fnZ0 (lambda) {
@@ -177,25 +221,6 @@ function MonopoleRadiator (h, D, d, N, g, mu, ground) {"use strict";
 		return Antenna.fnWireLossResistance (lambda, d, g, mu) / N;
 	}
 
-	// погонное сопротивление потерь
-	function fnZn (lambda, beta, fnZSn, fnZGn) {
-		var m, ZS1;
-
-		// FIXME: расчет поправки
-		var m = (1 - Math.sin (2 * beta * h) / (2 * beta * h));
-		return fnZSn (lambda).sum (fnZGn (lambda)).div (new Complex (h * m, 0));
-	}
-
-	// эквивалентное погонное сопротивление потерь линии
-	function fnZ1 (lambda, beta, fnZSn, fnR1, fnZGn) {
-		return new Complex (fnR1 (lambda) / 2, 0).sum (fnZn (lambda, beta, fnZSn, fnZGn)); // XXX: а точно делить на 2?
-	}
-
-	// эквивалентное волновое сопротивление
-	function fnW1 (k, W, alpha) {
-		return new Complex (W, 0).mul (alpha.div (new Complex (k, 0)).mul (new Complex (0, -1)).sum (new Complex (1, 0)));
-	}
-
 	// параметры антенны
 	function fnY (lambda, fnZSn, fnR1, fnZGn) {
         var result = [];
@@ -203,12 +228,21 @@ function MonopoleRadiator (h, D, d, N, g, mu, ground) {"use strict";
         // FIXME: расчет поправки
         result.k1 = 1.00;
 		result.k = 2 * Math.PI / lambda;
-        result.beta = result.k1 * result.k;
-        result.W = Antenna.fnWireWaveImpedance (h, D);
-        result.Z1 = fnZ1 (lambda, result.beta, fnZSn, fnR1, fnZGn);
-        result.alpha = result.Z1.div (new Complex (result.W, 0));
-        result.W1 = fnW1 (result.k, result.W, result.alpha);
-		result.Z = Antenna.fnLossyOpenedTransmissionLineInputImedance (result.W1, h, result.alpha, result.beta);
+        result.kk = result.k1 * result.k;
+        result.W = Antenna.fnWireWaveImpedance (h, D, lambda);
+                
+        result.ZSn = fnZSn (lambda);
+        result.Zgn = fnZGn (lambda);
+        result.R1 = fnR1 (lambda) / 2;
+        
+        var kkh2 = 2 * result.kk * h;        
+        var m = (1 - Math.sin (kkh2) / (kkh2)) * h;
+        
+        result.Zn = result.ZSn.sum (result.Zgn).sum (new Complex (result.R1 * m, 0));
+        result.Z1 = result.ZSn.sum (result.Zgn).div (new Complex (m, 0)).sum (new Complex (result.R1, 0));
+        result.beta = result.Z1.div (new Complex (result.W, 0));
+        result.W1 = Antenna.fnLossyTransmissionLineWaveImpedance (result.W, result.beta, result.k);
+		result.Z = Antenna.fnLossyOpenedTransmissionLineInputImedance (result.W1, h, result.beta, result.kk);
         
         return result;
 	}
@@ -221,12 +255,7 @@ function MonopoleRadiator (h, D, d, N, g, mu, ground) {"use strict";
 
 	var lambda0 = Phys.C / f0;
 
-	this.fn = function (lambda) {
-        var gnd = ground.fn (lambda);
-		var ZSn = fnZSn (lambda);
-		var R1 = fnR1 (lambda);		
-               
-        // глубина погружения тока       
+	this.fn = function (lambda) {             
 		var result = {};
 
 		result.h = h;
@@ -234,13 +263,30 @@ function MonopoleRadiator (h, D, d, N, g, mu, ground) {"use strict";
 		result.f0 = f0;
         
         // FIXME: Упорядочить
-		result.ZSn = ZSn;
-        result.Zgn = gnd.Zn;
+        var gnd = ground.fn (lambda, h, h, 0);
         result.Sg = gnd.S;
-		result.R1 = R1;
 
-        // TODO: Учет влияния неидеальной земли
+        // TODO: Учет влияния неидеальной земли 
+        var ae = fnY (lambda, fnZSn, fnR1, fnZGn);
+        result.Z = ae.Z;
+		result.Z1 = ae.Z1;
+		result.R1 = ae.R1;
+		result.ZSn = ae.ZSn;
+		result.W1 = ae.W1;                
+		result.W = ae.W;
+        result.C = 1 / (result.W * Phys.C / h);
+        result.L = Math.pow (result.W, 2) * result.C;
+        result.Zgn = ae.Zgn;
+                
+		// Rизл.
+		result.RS = fnY (lambda, fnZSn, fnR0, fnZ0).Z.x;
         
+		// Rзаземл.
+		result.Rg = fnY (lambda, fnZ0, fnR0, fnZGn).Z.x;
+        
+		// КПД
+		result.eta = ae.ZSn.x / ae.Zn.x;
+
 		// F (Theta) диаграмма направленности в вертикальной плоскости
 		result.fnF = function (Theta) {
 			var k = 2 * Math.PI / lambda;
@@ -249,31 +295,13 @@ function MonopoleRadiator (h, D, d, N, g, mu, ground) {"use strict";
 
 		// D (Theta) КНД
 		result.fnD = function (Theta) {
-			return (Phys.Z0 / Math.PI) * Math.pow (result.fnF (Theta), 2) / ZSn.x;
+			return (Phys.Z0 / Math.PI) * Math.pow (result.fnF (Theta), 2) / ae.ZSn.x;
 		};
 
 		// КНД макс.
 		// FIXME: упростить выражение
-		result.D = Phys.Z0 / Math.PI * Math.pow (Antenna.fnMaxFunctionValue (result.fnF, -Math.PI / 2, Math.PI / 2), 2) / ZSn.x;
-             
-        var Y = fnY (lambda, fnZSn, fnR1, fnZGn);
-        result.Z = Y.Z;
-		result.Z1 = Y.Z1;
-		result.W1 = Y.W1;                
-		result.W = Y.W;
-        result.C = 1 / (result.W * Phys.C / h);
-        result.L = Math.pow (result.W, 2) * result.C;
+		result.D = Phys.Z0 / Math.PI * Math.pow (Antenna.fnMaxFunctionValue (result.fnF, -Math.PI / 2, Math.PI / 2), 2) / ae.ZSn.x;        
         
-		// Rзаземл.
-		result.Rg = fnY (lambda, fnZ0, fnR0, fnZGn).Z.x;
-        
-		// Rизл.
-		result.RS = fnY (lambda, fnZSn, fnR0, fnZ0).Z.x;
-                
-		// КПД
-		// FIXME: врет при h~lambda. Делить на модуль импеданса? Считать по пучности?
-		result.eta = result.RS / result.Z.x;
-
 		return result;
 	};
 }
@@ -370,102 +398,146 @@ function MagneticLoop (S, p, l, d, N, g, mu) {"use strict";
 	};
 }
 
-function LongWire (h, l, b, nb, f, d, g, mu, A) {"use strict";
+function LongWire (h, l, b, nb, f, d, g, mu, ground) {"use strict";
 	// TODO: Проверки входных величин
 	// l/h <= 0,3
 	// kr <= 0,01
 
-	var W, Wb, cosksi;
-
-	cosksi = h / l;
+    // коэффициент наклона
+	var cosksi = h / l;
 
 	// волновое сопротивление вертикальной части
-	W = Antenna.fnWireWaveImpedance (l, d);
-	// XXX: а для h != l?
+	var W = Antenna.fnWireWaveImpedance (l, d); // XXX: а для h != l?
 
 	// волновое сопротивление горизонтальной части
-	Wb = Antenna.fnWireWaveImpedance (b, d);
-	// XXX: а для f != 0?
+	var Wb = Antenna.fnWireWaveImpedance (b, d); // XXX: а для f != 0?
 
+	function fnR0 () {
+		return 0;
+	}
+        
 	// погонное сопротивление потерь
 	function fnR1 (lambda) {
 		return Antenna.fnWireLossResistance (lambda, d, g, mu);
 	}
-
-	this.fn = function (lambda) {
-		var result, k, Z, be, le, lg, lr, RS0;
-
-		k = 2 * Math.PI / lambda;
-		
+    
+    function fnRSn (lambda, l, le, be) {
+        return Antenna.fnLoadedMonopoleRadiationResistance (lambda, l, le, be);
+    }
+    
+    function fnY (lambda, fnRSn, fnR1, ground) {
+        var result = [];        
+                          
+        // волновой коэффициент
+        result.k = 2 * Math.PI / lambda;
+        
 		// эквивалентное удлинение
-		// Кочержевский Г.Н. Антенно-фидерные устройства. 1989. с. 73	
-		be = (Math.atan (W / (Wb / Math.tan (k * b) / nb)) + Math.PI) % (Math.PI) / k;
-		
-		le = l + be;
-
+		// Кочержевский Г.Н. Антенно-фидерные устройства. 1989. с. 73
+        // FIXME: Полная модель линии
+        var Wbn = Wb / nb;
+        var Xb = Wbn / Math.tan (result.k * b);
+        var kbe = (Math.atan (W / Xb) + Math.PI) % Math.PI;       
+        result.be = kbe / result.k;
+                 
+        var hbe = (l - h) / 2;
+        
+        // эквивалентная длина
+        result.le = l + result.be;
+        result.he = h + result.be;
+               
 		// действующая длина
 		// Кочержевский Г.Н. Антенно-фидерные устройства. 1989. с. 71. (3.37)
 		// Белоцерковский Г.Б. Основы радиотехники и антенны. т.2. с.116
-		lg = (Math.cos (k * be) - Math.cos (k * le)) / (Math.sin (k * le) * k) * cosksi;
+        result.lg = Math.abs ((Math.cos (result.k * result.be) - Math.cos (result.k * result.le)) / (Math.sin (result.k * result.le) * result.k)) * cosksi;
 
-		lr = 2 * Math.atan (lg * k) / k;
-			
-		RS0 = Antenna.fnDipoleRadiationImpedance (lambda, lr).x / 2;
+        // погонное сопротивление потерь
+        result.R1 = fnR1 (lambda);
+        
+		// сопротивление излучения, отнесенное к току в пучности      
+        result.RSn = fnRSn (lambda, l, l + result.be, result.be) * cosksi * cosksi; // FIXME: уточнить формулу 
+        result.RSnD = fnRSn (lambda, h, h + result.be, result.be);
+                
+        // заземление
+        var gnd = ground.fn (lambda, l, l + result.be, result.be); 
+        gnd.Zn = gnd.Zn.mul (new Complex (cosksi * cosksi, 0));
+        
+        result.Zgn = gnd.Zn;
+        result.Sg = gnd.S;  
+        
+        var kl2 = 2 * result.k * result.le;
+        var sin2kl = Math.sin (kl2);
+        var m = result.le * (1 - sin2kl / kl2);
+        var R1 = result.R1 / 2 + (result.RSn + gnd.Zn.x) / m;
+        
+        result.Rn = result.RSn + gnd.Zn.x + (result.R1 / 2) * m;
+        
+        var beta = new Complex (R1, 0).div (new Complex (W, 0));
+        var W1 = Antenna.fnLossyTransmissionLineWaveImpedance (W, beta, result.k);
+        result.Z = Antenna.fnLossyOpenedTransmissionLineInputImedance (W1, result.le, beta, result.k);
+               
+        return result;
+    }
+    
+    // резонансная частота и собственная длина волны
+    var f0 = Antenna.fnResonance (function (f) {
+        var lambda = Phys.C / f;
+        return fnY (lambda, fnRSn, fnR1, ground).Z.y;
+    }, [10e3, 1000e6], 1);
 
-		result = {};
+    var lambda0 = Phys.C / f0;
 
+	this.fn = function (lambda) {
+        var ae = fnY (lambda, fnRSn, fnR1, ground);
+        
+		var result = {};
+        result.Rgn = ae.Zgn.x;
+        result.Sg = ae.Sg;
 		result.W = W;
 		result.Wb = Wb;
-		result.R1 = fnR1 (lambda);
-		result.le = le;
-		result.be = be;
-		result.lg = lg;
+		result.R1 = ae.R1;
+		result.le = ae.le;
+		result.be = ae.be;
+		result.lg = ae.lg;
+		result.f0 = f0;
+        result.RSn = ae.RSn;
+		result.lambda0 = lambda0;
+        result.C = 1 / (result.W * Phys.C / result.le);
+        result.L = Math.pow (result.W, 2) * result.C;
 
-		// сопротивление излучения
-		// Кочержевский Г.Н. Антенно-фидерные устройства. 1989. с. 71. (3.38)
-		// result.RS = 4 / 3 * Math.PI * Phys.Z0 * Math.pow (result.lg / lambda, 2);
-		
-		function fnZ (lambda, fnR1) {
-			var k = 2 * Math.PI / lambda;
-			var be = (Math.atan (W / (Wb / Math.tan (k * b) / nb)) + Math.PI) % (Math.PI) / k;
-			var le = l + be;
-			var lg = Math.abs ((Math.cos (k * be) - Math.cos (k * le)) / (Math.sin (k * le) * k)) * cosksi;
-			var lr = 2 * Math.atan (lg * k) / k;
-			
-			var sinx2 = Math.pow (Math.sin (lr * k), 2);
-			var RS0 = Antenna.fnDipoleRadiationImpedance (lambda, lr).x / 2 + fnR1 (lambda) * lr * (1 - Math.sin (2 * k * lr) / (2 * k * lr));
+		// F (Theta) диаграмма направленности в вертикальной плоскости
+        // Надененко с.281
+		result.fnF = function (Theta) {
+            var cost = Math.cos (Theta);
+            var khcost = ae.k * h * cost;
+            var a1 = Math.cos (khcost) * Math.cos (ae.k * ae.be);
+            var a2 = Math.sin (khcost) * Math.sin (ae.k * ae.be) * cost;
+            var a3 = Math.cos (ae.k * ae.he);
+            
+			return (Math.abs (Theta) < 1e-12) ? 0 : (a1 - a2 - a3) / Math.sin (Theta);
+		};
 
-			var aR = Math.pow (RS0 / W, 2) * Math.pow (Math.cos (k * lr), 2) + Math.pow (Math.sin (k * lr), 2);
-			var aX = Math.pow (RS0 / W, 2) * Math.pow (Math.cos (k * le), 2) + Math.pow (Math.sin (k * le), 2);
-						
-			var R = RS0 / aR;
-			var X = (W / 2) * Math.sin (2 * k * le) * (1 - Math.pow (RS0 / W, 2)) / aX;
-			return new Complex (R, -X);
-		}
-		
-		Z = fnZ (lambda, fnR1);
+		// D (Theta) КНД
+		result.fnD = function (Theta) {
+			return (Phys.Z0 / Math.PI) * Math.pow (result.fnF (Theta), 2) / ae.RSnD;
+		};
 
-		// резонансная частота и собственная длина волны
-		result.f0 = Antenna.fnResonance (function (f) {
-			var lambda = Phys.C / f;
-			return fnZ (lambda, fnR1).y;
-		}, [10e3, 1000e6], 1);
+		// КНД макс.
+		result.D = Phys.Z0 / Math.PI * Math.pow (Antenna.fnMaxFunctionValue (result.fnF, -Math.PI / 2, Math.PI / 2), 2) / ae.RSnD;
+     
+        // входное сопротивление
+		result.Z = ae.Z;        
+          
+        // сопротивление излучения
+        result.RS = fnY (lambda, fnRSn, fnR0, new IdealGround ()).Z.x;
 
-		result.lambda0 = Phys.C / result.f0;
-
-		// сопротивление заземления
-		result.Rg = A * lambda / result.lambda0;
-
-		result.Z = Z.sum (new Complex (result.Rg, 0));
-
-		// коэффициент направленного действия
-		// Кочержевский Г.Н. Антенно-фидерные устройства. 1989. с. 42. (2.32)
-		result.D = Phys.Z0 / Math.PI * Math.pow (1 - Math.cos (k * lr), 2) / RS0;
-
+        // сопротивление заземления
+		result.Rg = fnY (lambda, fnR0, fnR0, ground).Z.x;  
+        
 		// КПД
-		result.eta = fnZ (lambda, function (lambda) { return 0; } ).x / result.Z.x;
+		result.eta = ae.RSn / ae.Rn;
 
 		// Э.Д.С. эквивалентного генератора
+        // FIXME: Проверить
 		result.fnE = function (E) {
 			return E * lambda * Math.sqrt (result.D * result.eta * result.Z.x / (4 * Phys.Z0 * Math.PI));
 		};
@@ -475,57 +547,60 @@ function LongWire (h, l, b, nb, f, d, g, mu, A) {"use strict";
 }
 
 /*
- // XXX Сопротивление излучение у антенн с емкостной нагрузкой
  // XXX Qa
- // XXX рассчет сопротивления излучения для Г-образных
  // XXX точный расчет для наклонных
  // XXX наклон луча для Г-образных и Т-образных
  // XXX учитывать емкость между проводом и землей для низких антенн
  // XXX собственная добротность от f неизвестна
  // XXX Влияние земли
-
  // действующая высота наклона луча
  //  aerial.fg = (aerial.b != 0) ? (1 - Math.cos (k * aerial.b)) / (Math.sin (k * aerial.b) * k) * (aerial.f / aerial.b) : 0;
-
- var cosksi = aerial.h / aerial.l;
  */
  
 function IdealGround () {"use strict";
-    this.fn = function (lambda) {
+    this.fn = function (lambda, l, le, be) {
         var result = [];
         result.S = 0;
         result.Zn = new Complex (0, 0);
         return result;        
     };
 }
+
+function fnX (x, lambda, l, le, be) {
+    var k = 2 * Math.PI / lambda;
+    
+    var r2 = Math.sqrt (l * l + x * x);               
+    
+    var lr2 = l / r2;
+    var sinkbe = Math.sin (k * be);
+    var coskle = Math.cos (k * le);
+    var coskbe = Math.cos (k * be);
+    var kr2x = k * (r2 - x);
+    var sinkbelr2 = sinkbe * lr2;
+    
+    return Math.pow (coskbe, 2) 
+         + Math.pow (coskle, 2) 
+         + Math.pow (sinkbelr2, 2) 
+         - 2 * coskbe * coskle * Math.cos (kr2x)
+         + 2 * sinkbelr2 * coskle * Math.sin (kr2x);
+}
  
-function StiftGround (h, g, eps, a, l) {"use strict";
-    this.fn = function (lambda) {
-        function fnX (x, k, coskl) {
-            var r2 = Math.sqrt (h * h + x * x);               
-            return Math.abs ((1 + Math.pow (coskl, 2) - 2 * coskl * Math.cos (k * (r2 - x)))) / x;
-        };    
-            
+function ElectrodeGround (g, eps, a, s) {"use strict";
+    this.fn = function (lambda, l, le, be) {           
         var omega = 2 * Math.PI * Phys.C / lambda;
         var sigma = new Complex (g, omega * Phys.EPS0 * eps);
 
-        var S = (g === Infinity) 
-            ? 0 
-            : 1 / Math.sqrt (Math.PI * Phys.MU0 * sigma.x * Phys.C / lambda); 
-                   
-        var z = Math.min (S, l);
+        var S = 1 / Math.sqrt (Math.PI * Phys.MU0 * sigma.x * Phys.C / lambda);
+
+        var z = Math.min (S, s);
             
         function fi (x) {
-            var k = 2 * Math.PI / lambda;       
-            return fnX (x, k, Math.cos (k * h)); 
-        }            
+            return fnX (x, lambda, l, le, be) / x;
+        }
             
-        var Rg = (g === Infinity) 
-            ? 0 
-            : 1 / (2 * Math.PI * z) * (Math.integrate (fi, a / 2, 1.0, 100) 
-                                     + Math.integrate (fi, 1.0, 10.0, 20) 
-                                     + Math.integrate (fi, 10.0, lambda / 2, 20));
-        
+        var Rg = 1 / (2 * Math.PI * z) * (Math.integrate (fi, a / 2, 1.0, 100)
+                                       + Math.integrate (fi, 1.0, 10.0, 20)
+                                       + Math.integrate (fi, 10.0, lambda / 2, 20));
         var result = [];
         result.S = S;
         result.Zn = new Complex (Rg / sigma.mod (), 0);
@@ -534,29 +609,15 @@ function StiftGround (h, g, eps, a, l) {"use strict";
     };
 }
  
-function RadialGround (h, g, eps, l, A, rho, n, gr) {"use strict";
-    this.fn = function (lambda) {
-        var R1 = Antenna.fnWireLossResistance (lambda, rho, gr, 1);
-    
+function RadialGround (g, eps, s, A, rho, n) {"use strict";
+    this.fn = function (lambda, l, le, be) {    
         var omega = 2 * Math.PI * Phys.C / lambda;
         var sigma = new Complex (g, omega * Phys.EPS0 * eps);
-        var k = 2 * Math.PI / lambda;      
-        var coskl = Math.cos (k * h);    
-    
-        function fnX (x) {
-            var r2 = Math.sqrt (h * h + x * x);               
-            var fx = 1 + Math.pow (coskl, 2) - 2 * coskl * Math.cos (k * (r2 - x));
-            return fx;
-        };    
-                  
+                      
         function fi (x) {
-            return fnX (x) / x; 
+            return fnX (x, lambda, l, le, be) / x; 
         }
-
-        function fm (x) {
-            return fnX (x); 
-        }        
-        
+       
         function FI (x) {
             var C = Math.PI * x / n;
             var y = 1e4 * Math.pow (12 * g * C * Math.log (C / (rho / 2) - 0.5) / lambda, 2);
@@ -572,15 +633,13 @@ function RadialGround (h, g, eps, l, A, rho, n, gr) {"use strict";
         var I1 = Math.integrate (fiFI, a, 1.0, 20);
         var I2 = Math.integrate (fiFI, Math.max (1.0, a), Math.min (A, lambda / 2), 20);
         var I3 = Math.integrate (fi, A, lambda / 2, 20);
-        var I4 = Math.integrate (fm, a, A, 20);
 
         var S = 1 / Math.sqrt (Math.PI * Phys.MU0 * sigma.mod () * Phys.C / lambda);
-        var Ig = 1 / (2 * Math.PI * Math.min (l, S)) * (I1 + I2) + 1 / (2 * Math.PI * Math.min (l, S)) * I3;       
-        var Rr = R1 * I4 / n;
+        var Ig = 1 / (2 * Math.PI * Math.min (s, S)) * (I1 + I2) + 1 / (2 * Math.PI * Math.min (s, S)) * I3;       
         
         var result = [];
         result.S = S;
-        result.Zn = new Complex (Ig / sigma.mod () + Rr, 0);
+        result.Zn = new Complex (Ig / sigma.mod (), 0);
         
         return result;
     };

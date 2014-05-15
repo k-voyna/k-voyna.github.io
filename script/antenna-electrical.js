@@ -4,7 +4,15 @@
 /*global Materials: true, Grounds: true, Plots: true */
 /*global Conductor: true, Capacitor: true */
 
+// XXX: band 
+// XXX: наклонная
+
 function crystal () {"use strict";
+    var KDH = 0.03; // максимальное утолщение по диаметру
+    var KHMAX = 2/3;
+    var KBMAX = 0.4;
+    var KHEMAX = 0.45;
+
 	var antenna = Calc.calc ({
 		name : "antenna-electrical",
 		input : {
@@ -18,7 +26,7 @@ function crystal () {"use strict";
 			beam_length : [1e0],
 
 			// curtain
-			wire_design : [".", ":", ".:", "::", ".::", "*", "N", "_"],
+			wire_design : ".", //[".", ":", ".:", "::", ".::", "*", "N", "_"],
 			wire_material : ["Perfect", "Cu", "Cu+Sn", "Cu+Zn", "Al", "Zn", "Fe"],
 			wire_d : [1e-3],
 			wire_s : [1e-3],
@@ -27,29 +35,14 @@ function crystal () {"use strict";
 			wire_N : [],
 
 			// ground
-			ground : [7 * 1.5, 4, 2, 0.5, 0],
-
-			// power & load
-			E : [1e-3],
-			R : [1e3],
-			kR : [2, 1, 1 / 2, 1 / 3, 1 / 4, 1 / 6, 1 / 8],
-
-			// circuit
-			LC : ["L", "C"],
-			Cmin : [1e-12],
-			Cmax : [1e-12],
-			QC : [1e0],
-			L : [1e-6],
-			QL : [1e0],
-
-			CsX : ["-", "+"],
-			Cs : [1e-12],
-			QCs : [1e0],
-
-			Lmin : [1e-6],
-			Lmax : [1e-6],
-			QLmin : [1e0],
-			QLmax : [1e0]
+            ground_a : [1e-3],
+            ground_l : [1e-2],
+            ground_s : [1e-2],
+            ground_type : ['polar ice', 'sandy soil', 'dry soil', 'wet soil', 'fresh water', 'sea water'],
+            ground_system : ['_', '|', 'O'],
+            ground_n : [],
+            ground_rho : [1e-3],
+            ground_A : [1e0]
 		},
 		output : {
 			lambda : [1e0, 3],
@@ -62,20 +55,26 @@ function crystal () {"use strict";
 			f0 : [1e+6, 3],
 			k : [1e0, 3],
 
-			A : [1e0, 1],
-			Rg : [1e0, 1],
-
 			mu : [1e0, 1],
 			g : [1e0, 2, "exp"],
 			R1 : [1e-3, 2],
 
 			be : [1e0, 2],
 			he : [1e0, 2],
+            psi : [1e0, 2],
+            phi : [1e0, 2],
+            
 			hg : [1e0, 2],
+            RS : [1e0, 2],
 
 			D : [1e0, 2],
 			eta : [1e-2, 1],
-			G : [1e-1, 3],
+			G : [1e-1, 2],
+            
+            sigma : [1e+0, 1, "exp"],
+            eps : [1e+0, 1],
+            Rg : [1e0, 2],
+            Sg : [1e0, 2],            
 
 			Za : [1e0, 2, "complex"],
 			La : [1e-6, 2],
@@ -83,7 +82,7 @@ function crystal () {"use strict";
 		}
 	}, function () {
 		// длина волны
-		this.check (this.f >= 1e5 && this.f <= 3e7, "f");
+		this.check (this.f >= 1e3 && this.f <= 3e7, "f");
 		this.lambda = Phys.C / this.f;
 
 		// @formatter:off
@@ -95,68 +94,35 @@ function crystal () {"use strict";
 				this.wire_N = 1;
 				this.wire_De = this.wire_d;
 
-				this.check (this.wire_d > 0 && this.wire_d < this.lambda * 1e-3, "d");
-			},
-			':' : function () {
-				// 2-wires
-				this.wire_N = 2;
-				this.wire_De = 2 * Math.sqrt (this.wire_d / 2 * this.wire_s);
-			},
-			'.:' : function () {
-				// 3 wires
-				this.wire_N = 3;
-				this.wire_De = 2 * Math.pow (this.wire_d / 2 * Math.pow (this.wire_s, 2), 1 / 3);
-			},
-			'::' : function () {
-				// 4 wires
-				this.wire_N = 4;
-				this.wire_De = 2 * Math.pow (Math.SQRT2 * this.wire_d / 2 * Math.pow (this.wire_s, 3), 1 / 4);
-			},
-			'.::' : function () {
-				// 5 wires
-				this.wire_N = 5;
-				this.wire_De = 2 * Math.pow (2.62 * this.wire_d / 2 * Math.pow (this.wire_s, 4), 1 / 5);
-			},
-			'*' : function () {
-				// 6-wires
-				this.wire_N = 6;
-				this.wire_De = 2 * Math.pow (6 * this.wire_d / 2 * Math.pow (this.wire_s, 5), 1 / 6);
-			},
-			'N' : function () {
-				// N-wires
-				this.wire_De = 2 * Math.pow (this.wire_N * this.wire_d / 2, 1 / this.wire_N) * Math.pow (this.wire_D / 2, 1 - 1 / this.wire_N);
-			},
-			'_' : function () {
-				// flat
-				this.wire_N = 1;
-				this.wire_De = 2 * this.wire_w * Math.exp (-3 / 2);
-				this.wire_d = 2 * this.wire_w / Math.PI;
+				this.check (this.wire_d > 0 && this.wire_d < this.lambda * 5e-3, "d");
+                // FIXME: this.check (this.lambda / this.wire_d > 1e3, "wire_d"); 
+                // FIXME: this.check (this.wire_d <= KDH * this.lead_h, "geometry");                
 			}
 		};
 
 		wires [this.wire_design].call (this);
 		// @formatter:on
-
-		// конструкция
+       
+		// конструкция                       
 		var designes = {
 			'|' : function () {
 				this.bf = 0;
 				this.h = this.lead_h;
 				this.l = this.lead_h;
-				this.nb = 0;
+				this.nb = 1;
 				this.b = 0;
 
-				this.check (this.lead_h > 0 && this.lead_h < this.lambda * 0.2, "lead_h");
+				this.check (this.lead_h > 0 && this.lead_h < this.lambda * KHMAX, "lead_h");
 			},
 			'/' : function () {
 				this.bf = 0;
 				this.h = this.lead_h;
 				this.l = this.lead_l;
-				this.nb = 0;
+				this.nb = 1;
 				this.b = 0;
 
-				this.check (this.lead_h > 0 && this.lead_h < this.lambda * 0.2, "lead_h");
-				this.check (this.lead_l > this.lead_h, "lead_l");
+				this.check (this.lead_h > 0 && this.lead_h < this.lambda * KHMAX, "lead_h");
+				this.check (this.lead_l >= this.lead_h, "lead_l");
 			},
 			'Г' : function () {
 				this.h = this.lead_h;
@@ -166,8 +132,8 @@ function crystal () {"use strict";
 				this.bf = 0;
 				// this.beam_slope;
 
-				this.check (this.lead_h > 0 && this.lead_h < this.lambda * 0.2, "lead_h");
-				this.check (this.beam_length > 0, "beam_length");
+				this.check (this.lead_h > 0 && this.lead_h < this.lambda * KHMAX, "lead_h");
+				this.check (this.beam_length > 0 && this.beam_length < this.lambda * KBMAX, "beam_length");
 
 				// ("in_aerial_beam_slope", aerial.f >= -aerial.b && aerial.f <= aerial.b, "Высота наклона луча не может быть больше длины луча.");
 				// ("in_aerial_beam_slope", aerial.f >= -aerial.h, "Высота снижения луча не может быть больше высоты антенны");
@@ -181,8 +147,8 @@ function crystal () {"use strict";
 				this.bf = 0;
 				// this.beam_slope;
 
-				this.check (this.lead_h > 0 && this.lead_h < this.lambda * 0.2, "lead_h");
-				this.check (this.beam_length > 0, "beam_length");
+				this.check (this.lead_h > 0 && this.lead_h < this.lambda * KHMAX, "lead_h");
+				this.check (this.beam_length > 0 && this.beam_length < this.lambda * KBMAX, "beam_length");
 
 				// ("in_aerial_beam_slope", aerial.f >= -aerial.b && aerial.f <= aerial.b, "Высота наклона луча не может быть больше длины луча.");
 				// ("in_aerial_beam_slope", aerial.f >= -aerial.h, "Высота снижения луча не может быть больше высоты антенны");
@@ -205,22 +171,46 @@ function crystal () {"use strict";
 
 		// материал
 		var material = Materials [this.wire_material];
-
 		this.g = material.g;
 		this.mu = material.mu;
-		this.A = this.ground;
 
+        var groundE = Grounds [this.ground_type];           
+        this.sigma = groundE.sigma;
+        this.eps = groundE.eps;
+               
+        var ground;
+        if (this.ground_system === '_') {
+            ground = new IdealGround ();
+        } else if (this.ground_system === '|') {
+            this.check (this.ground_a >= 0.001, "ground_a");
+            this.check (this.ground_l >= 0.05 && this.ground_l <= 3, "ground_l");
+
+            ground = new ElectrodeGround (this.sigma, this.eps, this.ground_a, this.ground_l);
+        } else {
+            this.check (this.ground_s >= 0.05 && this.ground_s <= 3, "ground_s");
+            this.check (this.ground_A >= 1.0, "ground_A");
+            this.check (this.ground_rho >= 0.0001 && this.ground_rho <= this.ground_A / 10, "ground_rho1");
+            this.check (this.ground_rho < this.ground_s, "ground_rho2");
+            this.check (this.ground_n > 0, "ground_n");
+       
+            ground = new RadialGround (this.sigma, this.eps, this.ground_s, this.ground_A, this.ground_rho, this.ground_n);
+        }        
+        
 		// антенна
-		this.antenna = new LongWire (this.h, this.l, this.b, this.nb, this.f, this.wire_De, this.g, this.mu, this.A);
+		var antenna = new LongWire (this.h, this.l, this.b, this.nb, this.f, this.wire_De, this.g, this.mu, ground);
+        this.antenna = antenna;
 		
 		var antennaAtLamda = this.antenna.fn (this.lambda);
 
+        this.Sg = antennaAtLamda.Sg;
 		this.W = antennaAtLamda.W;
 		this.Wb = antennaAtLamda.Wb;
 		this.R1 = antennaAtLamda.R1;
 		this.Rl = antennaAtLamda.Rl;
-		this.Rg = antennaAtLamda.Rg;
-
+		this.Rg = antennaAtLamda.Rgn;
+        this.RS = antennaAtLamda.RSn;
+		this.Ca = antennaAtLamda.C;
+		this.La = antennaAtLamda.L;
 		this.be = antennaAtLamda.be;
 		this.hg = antennaAtLamda.lg;
 		this.he = antennaAtLamda.le;
@@ -228,16 +218,23 @@ function crystal () {"use strict";
 		this.eta = antennaAtLamda.eta;
 		this.D = antennaAtLamda.D;
 		this.G = Math.log10 (this.D * this.eta);
+        this.psi = 2 * Math.PI * antennaAtLamda.be / this.lambda * 180 / Math.PI;
+        this.phi = 2 * Math.PI * antennaAtLamda.le / this.lambda * 180 / Math.PI;
 
 		this.f0 = antennaAtLamda.f0;
 		this.lambda0 = antennaAtLamda.lambda0;
 
-		this.check (this.f < this.f0, "f_calc");
+        this.check (this.be < this.lambda * KBMAX, "be");
+        this.check (this.he < this.lambda * KHEMAX, "he");
+        this.check (!isNaN (this.f0), "f0");
 
-		this.k = this.lambda0 / (this.b + this.l);
-
-		this.Ca = 1 / (2 * Math.PI * 1e3 * (-this.antenna.fn (Phys.C / 1e3).Z.y));
-		this.La = Math.pow (this.W, 2) * this.Ca;
+        this.fnZ = function (f) {
+            return antenna.fn (Phys.C / f).Z;
+        };
+               
+        // FIXME: Нам нужен только Z, а в цикле считается все данные антенны
+        this.band = Plots.band (this.f, this.f0 / (1 - KHEMAX));        
+        this.plot (Plots.impedanceResponseData (this.fnZ, this.band, 100), Plots.impedanceResponseAxes (this.band), 0);
 	});
 	
 	var circuit = Calc.calc ({
@@ -265,7 +262,7 @@ function crystal () {"use strict";
 			Lmin : [1e-6],
 			Lmax : [1e-6],
 			QLmin : [1e0],
-			QLmax : [1e0]
+			QLmax : [1e0]   
 		},
 		output : {
 			X : [1e3, 2],
@@ -377,12 +374,10 @@ function crystal () {"use strict";
 			this.Cx = Math.clamp (1 / (-this.X * omega), this.Cmin, this.Cmax);
 
 			fnCircuit = function (f, L, QL, C, QC, R, Cs) {
-				var result, ae;
+				var ae = antenna.antenna.fn (Phys.C / f);
 
-				result = [];
-
-				ae = antenna.antenna.fn (Phys.C / f);
-
+				var result = [];
+                
 				result.zA = ae.Z;
 				result.zR = new Complex (R, 0);
 				result.zCs = Cs.fnZ (f);
@@ -452,16 +447,23 @@ function crystal () {"use strict";
 				return result;
 			};
 
+            var L = this.L;
+            var QL = this.QL;
+            var Cx = this.Cx;
+            var QC = this.QC;
+            var Rk = this.Rk;
+            var Cmax = this.Cmax;
+            var Cmin = this.Cmin;
 			this.fnCircuitF = function (f) {
-				return fnCircuit (f, this.L, this.QL, this.Cx, this.QC, this.Rk);
+				return fnCircuit (f, L, QL, Cx, QC, Rk);
 			};
 
 			this.fnCircuitFmin = function (f) {
-				return fnCircuit (f, this.L, this.QL, this.Cmax, this.QC, this.Rk);
+				return fnCircuit (f, L, QL, Cmax, QC, Rk);
 			};
 
 			this.fnCircuitFmax = function (f) {
-				return fnCircuit (f, this.L, this.QL, this.Cmin, this.QC, this.Rk);
+				return fnCircuit (f, L, QL, Cmin, QC, Rk);
 			};
 
 			this.Eo = fnCircuit (this.f, this.L, this.QL, this.Cx, this.QC, 1e12).fnU (this.E).mod ();
@@ -494,38 +496,24 @@ function crystal () {"use strict";
 		this.B = this.f / this.Qn;
 
 		//---------------------------------------------------------------------------------------------------
-		var fmin, fmax, freq;
-
-		if (this.f < 5e5) {
-			fmin = 1e5;
-			fmax = 5e5;
-		} else if (this.f >= 5e5 && this.f < 2e6) {
-			fmin = 1e5;
-			fmax = 2e6;
-		} else if (this.f >= 2e6 && this.f < 3e6) {
-			fmin = 2e6;
-			fmax = 10e6;
-		} else if (this.f >= 3e6 && this.f < 10e6) {
-			fmin = 3e6;
-			fmax = 15e6;
-		} else if (this.f >= 10e6) {
-			fmin = 10e6;
-			fmax = 30e6;
-		}
-
-		fmax = Math.min (antenna.f0, fmax);
-
+        var fmin = antenna.band [0];
+        var fmax = antenna.band [1];
+        
 		var Ux, Umin, Umax;
 		Ux = [];
 		Umin = [];
 		Umax = [];
-		if (fmax > fmin && fmax > 1e6) {
-			for ( freq = fmin; freq <= fmax; freq += (fmax - fmin) / 200) {
-				var circuitX = this.fnCircuitF (freq);
+
+		if (fmax > fmin) {
+            var freq;
+			for (freq = fmin; freq <= fmax; freq += (fmax - fmin) / 200) {
+                // FIXME: Нам нужен только Z, а в цикле считается все данные антенны по 3 раза
+                
+				var circuitX   = this.fnCircuitF (freq);
 				var circuitMin = this.fnCircuitFmin (freq);
 				var circuitMax = this.fnCircuitFmax (freq);
 
-				var px = Math.pow (circuitX.fnU (this.E).mod () * this.kR, 2) / this.R;
+				var px   = Math.pow (circuitX.fnU (this.E).mod () * this.kR, 2) / this.R;
 				var pmin = Math.pow (circuitMin.fnU (this.E).mod () * this.kR, 2) / this.R;
 				var pmax = Math.pow (circuitMax.fnU (this.E).mod () * this.kR, 2) / this.R;
 
