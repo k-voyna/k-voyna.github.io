@@ -28,7 +28,7 @@
     // модель конденсатора
     fnCapacitor : function (f, C, Q) {
         var result = [];
-        var XC = 1 / (2 * Math.PI * f * C);
+        var XC = 1 / (2 * Math.PI * f * (C + 1e-18));
         result.Z = new Complex (XC / Q, -XC);
     
         return result;

@@ -4,24 +4,12 @@ table.calc-table {
     width: 100%;
 }
 
+.calc-tool {
+    font-size: small;
+}
+
 .calc, .calc select, .calc input {
     font-size: medium;
-}
-
-.calc select, .calc input[type="text"] {
-    width: 6em;
-}
-
-.calc p {
-    font-size: smaller;   
-}
-
-table.calc-table tr {
-    height: 1.8em;
-}
-
-table.calc-table td {
-
 }
 
 .calc tr.calc-message {
@@ -34,7 +22,7 @@ table.calc-table td {
 }
 
 .calc td.calc-cell-name {
-    width: auto;
+    width: 570px;
     padding-left: 0.5em;
     padding-right: 0.5em;
 }
@@ -44,29 +32,22 @@ table.calc-table td {
 }
 
 .calc td.calc-cell-value {
-    width: 6em;
-    padding-right: 0.5em;
-}
 
-.calc div.plot {
-	margin-top: 1em;
-	margin-bottom: 1em;
-	padding-top: 0.25em;
-	padding-bottom: 1em;
+    padding-right: 0.5em;
 }
 
 .calc tr.calc-input-int td.calc-cell-value,
 .calc tr.calc-input-enum td.calc-cell-value,
 .calc tr.calc-input-real td.calc-cell-value {
-    width: 6em;
-    padding-right: 0.25em;
+
+    padding-right: 0.0em;
 }
 
 .calc td.calc-cell-msg {
     padding-left: 0.5em;
     padding-right: 0.75em;
     text-align: right;
-    font-size: smaller;
+    font-size: small;
     font-style: italic;
 }
 

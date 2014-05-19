@@ -90,7 +90,8 @@ function crystal () {"use strict";
         this.plot (
             [{
                 data : Vf,
-                color : "#00F"
+                color : "#00F",
+                shadowSize: 0
             }], {
             xaxis: {
                 color : "#211",
@@ -107,7 +108,27 @@ function crystal () {"use strict";
                 tickFormatter : function formatter (val, axis) {
                     return Math.round (val * 1e6);
                 }
-            }
+            },
+            
+            grid: {
+                markings: [{ 
+                    xaxis: { 
+                        from: 0, 
+                        to: 0
+                    },
+                        
+                    color: "#000" 
+                },{ 
+                    yaxis: { 
+                        from: 0, 
+                        to: 0
+                    },
+                        
+                    color: "#000" 
+                }],
+                
+                markingsLineWidth: 1,
+            }            
         });
     });    
     
@@ -450,8 +471,8 @@ function crystal () {"use strict";
         };
                        
         var s = [];
-        var Emax = this.Ek * 2.1;
-        for (var E = 0; E <= Emax; E += Emax / 40) {           
+        var Emax = this.Ek * 2;
+        for (var E = 0; E <= Emax * 1.01; E += Emax / 100) {           
             s.push ([E, this.fnDetector (E).Uavg]);
         }               
 
@@ -518,6 +539,7 @@ function crystal () {"use strict";
         this.plot ([{
                 data : f,
                 color : "#11F",
+                shadowSize: 0
             }], {
             xaxis: {
                 color : "#111",
@@ -526,7 +548,8 @@ function crystal () {"use strict";
                 max : 0.2501,
                 
                 tickFormatter : function formatter (val, axis) {
-                    return Math.round (val * 1000);
+                    var digits = axis.tickDecimals - 3 >= 0 ? axis.tickDecimals - 3 : 0;
+                    return (val * 1e3).toFixed (digits);
                 }                
             },
             yaxis: {
@@ -536,42 +559,79 @@ function crystal () {"use strict";
                 max : 0.10,
                
                 tickFormatter : function formatter (val, axis) {
-                    return Math.round (val * 1e3);
+                    var digits = axis.tickDecimals - 3 >= 0 ? axis.tickDecimals - 3 : 0;
+                    return (val * 1e3).toFixed (digits);
                 }
-            }
+            },
+            grid: {
+                markings: [{ 
+                    xaxis: { 
+                        from: 0, 
+                        to: 0
+                    },
+                        
+                    color: "#222" 
+                },{ 
+                    yaxis: { 
+                        from: 0, 
+                        to: 0
+                    },
+                        
+                    color: "#222" 
+                }],
+                
+                markingsLineWidth: 1,
+            }            
         }, 0);
         
         this.plot (
             [{
                 data : s,
                 color : "#00F",
-                yaxis: 1
+                yaxis: 1,
+                shadowSize: 0
             }], {
             xaxis: {
                 color : "#111",
                 axisLabel : "Амплитуда немодулированного входного ВЧ-напряжения, мВ",
                 min : 0,
                 max : Emax,
+                
                 tickFormatter : function formatter(val, axis) {
-                    return (val * 1e3).toFixed (0);
+                    var digits = axis.tickDecimals - 3 >= 0 ? axis.tickDecimals - 3 : 0;
+                    return (val * 1e3).toFixed (digits);
                 }
             },
             
-            yaxes: [{
+            yaxis: {
                 position: "left",
                 color : "#111",
                 axisLabel : "Постоянная составляющая выходного напряжения, мВ",
                 
                 tickFormatter : function formatter (val, axis) {
-                    if (val < 0.001) {
-                        return (val * 1000).toFixed (2);
-                    } else if (val >= 0.001 && val < 1) {
-                        return (val * 1000).toFixed (2);
-                    } else {
-                        return val * 1000;
-                    }
+                    return (val * 1000).toFixed (axis.tickDecimals - 3);
                },
-            }]
+            },
+            
+            grid: {
+                markings: [{ 
+                    xaxis: { 
+                        from: (this.Ek * (1 - this.m)), 
+                        to: (this.Ek * (1 - this.m))
+                    },
+                        
+                    color: "#222" 
+                },{ 
+                    xaxis: { 
+                        from: (this.Ek * (1 + this.m)), 
+                        to: (this.Ek * (1 + this.m))
+                    },
+                        
+                    color: "#222" 
+                }],
+                
+                markingsLineWidth: 1,
+            }
         }, 1);      
 
         // ------------------------------------------------------------------------------------------------------------
@@ -613,7 +673,7 @@ function crystal () {"use strict";
              data : kd,
              color : "#11f",
              yaxis: 1,
-             shadowSize : 2
+             shadowSize : 0
         }], options1, 2);      
     });
 }

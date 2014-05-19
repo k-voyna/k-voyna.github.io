@@ -4,9 +4,6 @@
 /*global Materials: true, Grounds: true, Plots: true */
 /*global Conductor: true, Capacitor: true */
 
-// XXX: band 
-// XXX: наклонная
-
 function crystal () {"use strict";
     var KDH = 0.03; // максимальное утолщение по диаметру
     var KHMAX = 2/3;
@@ -68,7 +65,7 @@ function crystal () {"use strict";
             RS : [1e0, 2],
 
 			D : [1e0, 2],
-			eta : [1e-2, 1],
+			eta : [1e-2, 2],
 			G : [1e-1, 2],
             
             sigma : [1e+0, 1, "exp"],
@@ -201,6 +198,7 @@ function crystal () {"use strict";
         this.antenna = antenna;
 		
 		var antennaAtLamda = this.antenna.fn (this.lambda);
+        this.antennaAtLambda = antennaAtLamda;
 
         this.Sg = antennaAtLamda.Sg;
 		this.W = antennaAtLamda.W;
@@ -216,7 +214,7 @@ function crystal () {"use strict";
 		this.he = antennaAtLamda.le;
 		this.Za = antennaAtLamda.Z;
 		this.eta = antennaAtLamda.eta;
-		this.D = antennaAtLamda.D;
+		this.D = antennaAtLamda.D ();
 		this.G = Math.log10 (this.D * this.eta);
         this.psi = 2 * Math.PI * antennaAtLamda.be / this.lambda * 180 / Math.PI;
         this.phi = 2 * Math.PI * antennaAtLamda.le / this.lambda * 180 / Math.PI;
@@ -316,11 +314,10 @@ function crystal () {"use strict";
 			this.Lx = Math.clamp (-antenna.Za.sum (Cs.fnZ (this.f)).y / omega, this.Lmin, this.Lmax);
 			this.QLx = this.QLmin + (this.Lx - this.Lmin) / (this.Lmax - this.Lmin) * (this.QLmax - this.QLmin);
 
-			var fnCircuit = function (f, L, QL, R, Cs) {
+			var fnCircuit = function (f, aerial, L, QL, R, Cs) {
 				var result = [];
-				var ae = antenna.antenna.fn (Phys.C / f);
 
-				result.zA = ae.Z;
+				result.zA = aerial.Z;
 				result.zR = new Complex (R, 0);
 				result.zCs = Cs.fnZ (f);
 
@@ -331,7 +328,7 @@ function crystal () {"use strict";
 				result.Qn = result.zL.y / result.z.x; 
 
 				result.fnU = function (E) {
-					return new Complex (ae.fnE (E), 0).div (result.z).mul (result.zRL);
+					return new Complex (aerial.fnE (E), 0).div (result.z).mul (result.zRL);
 				};
 
 				return result;
@@ -348,8 +345,17 @@ function crystal () {"use strict";
 			this.fnCircuitFmax = function (f) {
 				return fnCircuit (f, this.Lmin, this.QLmin, this.Rk, Cs);
 			};
+            
+            this.fnCircuit = function (f) {
+                var aerial = antenna.antenna.fn (Phys.C / f);
+                return {
+                    x : fnCircuit (f, aerial, this.Lx, this.QLx, this.Rk, Cs),
+                    min : fnCircuit (f, aerial, this.Lmax, this.QLmax, this.Rk, Cs),
+                    max : fnCircuit (f, aerial, this.Lmin, this.QLmin, this.Rk, Cs)
+                };
+            };            
 
-			this.Eo = fnCircuit (this.f, this.Lx, this.QLx, 1e12, Cs).fnU (this.E).mod ();
+			this.Eo = fnCircuit (this.f, antenna.antennaAtLambda, this.Lx, this.QLx, 1e12, Cs).fnU (this.E).mod ();
 		} else if (this.design === "LC~" || this.design === "CaLC~") {
 			this.check (this.Cmin > 0, "Cmin");
 			this.check (this.Cmax >= this.Cmin, "Cmax");
@@ -373,12 +379,10 @@ function crystal () {"use strict";
 
 			this.Cx = Math.clamp (1 / (-this.X * omega), this.Cmin, this.Cmax);
 
-			fnCircuit = function (f, L, QL, C, QC, R, Cs) {
-				var ae = antenna.antenna.fn (Phys.C / f);
-
+			fnCircuit = function (f, aerial, L, QL, C, QC, R, Cs) {
 				var result = [];
                 
-				result.zA = ae.Z;
+				result.zA = aerial.Z;
 				result.zR = new Complex (R, 0);
 				result.zCs = Cs.fnZ (f);
 
@@ -391,25 +395,22 @@ function crystal () {"use strict";
 				result.Qn = result.zRLC.par (result.zA.sum (result.zCs)).x / result.zL.y;
 
 				result.fnU = function (E) {
-					return new Complex (ae.fnE (E), 0).div (result.z).mul (result.zRLC);
+					return new Complex (aerial.fnE (E), 0).div (result.z).mul (result.zRLC);
 				};
 
 				return result;
 			};
 
-			this.fnCircuitF = function (f) {
-				return fnCircuit (f, this.L, this.QL, this.Cx, this.QC, this.Rk, Cs);
-			};
-
-			this.fnCircuitFmin = function (f) {
-				return fnCircuit (f, this.L, this.QL, this.Cmax, this.QC, this.Rk, Cs);
-			};
-
-			this.fnCircuitFmax = function (f) {
-				return fnCircuit (f, this.L, this.QL, this.Cmin, this.QC, this.Rk, Cs);
-			};
-
-			this.Eo = fnCircuit (this.f, this.L, this.QL, this.Cx, this.QC, 1e12, Cs).fnU (this.E).mod ();
+            this.fnCircuit = function (f) {
+                var aerial = antenna.antenna.fn (Phys.C / f);
+                return {
+                    x : fnCircuit (f, aerial, this.L, this.QL, this.Cx, this.QC, this.Rk, Cs),
+                    min : fnCircuit (f, aerial, this.L, this.QL, this.Cmax, this.QC, this.Rk, Cs),
+                    max : fnCircuit (f, aerial, this.L, this.QL, this.Cmin, this.QC, this.Rk, Cs)
+                };
+            };            
+            
+			this.Eo = fnCircuit (this.f, antenna.antennaAtLambda, this.L, this.QL, this.Cx, this.QC, 1e12, Cs).fnU (this.E).mod ();
 		} else {
 			this.check (this.Cmin > 0, "Cmin");
 			this.check (this.Cmax >= this.Cmin, "Cmax");
@@ -426,11 +427,10 @@ function crystal () {"use strict";
 
 			this.Cx = Math.clamp (1 / (-this.X * omega), this.Cmin, this.Cmax);
 
-			var fnCircuit = function (f, L, QL, C, QC, R) {
+			var fnCircuit = function (f, aerial, L, QL, C, QC, R) {
 				var result = [];
-				var ae = antenna.antenna.fn (Phys.C / f);
 
-				result.zA = ae.Z;
+				result.zA = aerial.Z;
 				result.zR = new Complex (R, 0);
 				result.zC = Phys.fnCapacitor (f, C, QC).Z;
 				result.zL = Phys.fnInductor (f, L, QL).Z;
@@ -441,32 +441,22 @@ function crystal () {"use strict";
 				result.Qn = result.zL.y / result.z.x;
 
 				result.fnU = function (E) {
-					return new Complex (ae.fnE (E), 0).div (result.z).mul (result.zRL);
+					return new Complex (aerial.fnE (E), 0).div (result.z).mul (result.zRL);
 				};
 
 				return result;
 			};
 
-            var L = this.L;
-            var QL = this.QL;
-            var Cx = this.Cx;
-            var QC = this.QC;
-            var Rk = this.Rk;
-            var Cmax = this.Cmax;
-            var Cmin = this.Cmin;
-			this.fnCircuitF = function (f) {
-				return fnCircuit (f, L, QL, Cx, QC, Rk);
-			};
-
-			this.fnCircuitFmin = function (f) {
-				return fnCircuit (f, L, QL, Cmax, QC, Rk);
-			};
-
-			this.fnCircuitFmax = function (f) {
-				return fnCircuit (f, L, QL, Cmin, QC, Rk);
-			};
-
-			this.Eo = fnCircuit (this.f, this.L, this.QL, this.Cx, this.QC, 1e12).fnU (this.E).mod ();
+            this.fnCircuit = function (f) {
+                var aerial = antenna.antenna.fn (Phys.C / f);
+                return {
+                    x : fnCircuit (f, aerial, this.L, this.QL, this.Cx, this.QC, this.Rk),
+                    min : fnCircuit (f, aerial, this.L, this.QL, this.Cmax, this.QC, this.Rk),
+                    max : fnCircuit (f, aerial, this.L, this.QL, this.Cmin, this.QC, this.Rk)
+                };
+            };
+            
+			this.Eo = fnCircuit (this.f, antenna.antennaAtLambda, this.L, this.QL, this.Cx, this.QC, 1e12).fnU (this.E).mod ();
 		}
 
 		this.check (this.E <= 10 && this.E > 0, "E");
@@ -478,7 +468,7 @@ function crystal () {"use strict";
 		this.Pa = Math.pow (this.E * this.lambda / (2.0 * Math.PI), 2) * (antenna.D * antenna.eta) / (4 * Phys.Z0 / Math.PI);
 		this.Ea = Math.sqrt (4 * this.Pa * antenna.Za.x);
 
-		var circuitAtF = this.fnCircuitF (this.f);
+		var circuitAtF = this.fnCircuit (this.f).x;
 
 		this.za = circuitAtF.z;
 		this.Zo = circuitAtF.ZL;
@@ -507,15 +497,11 @@ function crystal () {"use strict";
 		if (fmax > fmin) {
             var freq;
 			for (freq = fmin; freq <= fmax; freq += (fmax - fmin) / 200) {
-                // FIXME: Нам нужен только Z, а в цикле считается все данные антенны по 3 раза
+                var circuit = this.fnCircuit (freq);
                 
-				var circuitX   = this.fnCircuitF (freq);
-				var circuitMin = this.fnCircuitFmin (freq);
-				var circuitMax = this.fnCircuitFmax (freq);
-
-				var px   = Math.pow (circuitX.fnU (this.E).mod () * this.kR, 2) / this.R;
-				var pmin = Math.pow (circuitMin.fnU (this.E).mod () * this.kR, 2) / this.R;
-				var pmax = Math.pow (circuitMax.fnU (this.E).mod () * this.kR, 2) / this.R;
+				var px   = Math.pow (circuit.x.fnU (this.E).mod () * this.kR, 2) / this.R;
+				var pmin = Math.pow (circuit.min.fnU (this.E).mod () * this.kR, 2) / this.R;
+				var pmax = Math.pow (circuit.max.fnU (this.E).mod () * this.kR, 2) / this.R;
 
                 var p0 = Math.pow (Phys.C / freq * this.E / (2 * Math.PI), 2) / (4 * Phys.Z0 / Math.PI);
                 
@@ -547,17 +533,17 @@ function crystal () {"use strict";
 				data : Ux,
 				color : "#030",
 				label : "При настройке на расчетную частоту",
-				shadowSize : 2
+				shadowSize : 0
 			}, {
 				data : Umin,
 				color : "#F00",
 				label : "При минимальной частоте настройки",
-				shadowSize : 2
+				shadowSize : 0
 			}, {
 				data : Umax,
 				color : "#00F",
 				label : "При максимальной частоте настройки",
-				shadowSize : 2
+				shadowSize : 0
 			}], options1, 0);
 		}
 	});

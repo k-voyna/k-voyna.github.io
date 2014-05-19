@@ -54,6 +54,7 @@ function crystal () {"use strict";
             eps : [1e+0, 1],
             Rg : [1e0, 2],
             Sg : [1e0, 2],
+            sg : [1e0, 2, "exp"],
             RS : [1e0, 2],
             
             mu : [1e0, 1],
@@ -199,6 +200,7 @@ function crystal () {"use strict";
         this.W1 = antennaAtLamda.W1;
         this.R1 = antennaAtLamda.R1;
         this.Sg = antennaAtLamda.Sg;
+        this.sg = antennaAtLamda.sg.mod ();
         this.Rg = antennaAtLamda.Zgn.x;
         this.RS = antennaAtLamda.ZSn.x;
         

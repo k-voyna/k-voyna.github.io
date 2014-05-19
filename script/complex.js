@@ -213,4 +213,14 @@ function Complex (x, y) {"use strict";
         
         return A.div (B); 
     };
+    
+    // гиперболические функции
+    this.th = function () {
+        var A, B;
+        
+        A = new Complex (Math.sh (2 * this.x), -Math.sin (2 * this.y));
+        B = new Complex (Math.ch (2 * this.x) -Math.cos (2 * this.y), 0);
+        
+        return B.div (A); 
+    };    
 }

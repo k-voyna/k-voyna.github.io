@@ -11,9 +11,8 @@ Calc = {};
 
 // switches
 Calc.updateSwitch = function () {"use strict";
-    var classes, index, i, id;
-    
-    classes = $(this).parents ("tr").attr ('class').split(" ");
+    var i, id;    
+    var classes = $(this).parents ("tr").attr ('class').split(" ");
     
     for (i = 0; i < classes.length; ++i) {
         if (classes [i].indexOf('calc-row--') === 0) {
@@ -21,18 +20,17 @@ Calc.updateSwitch = function () {"use strict";
         }
     }
           
-    index = $(this).find ("option:selected").index ();
+    var index = $(this).find ("option:selected").index ();
     
-    $(".calc-case--" + id + "-" + (index + 1)).show ();
+    $(".calc tr[class*='calc-case--" + id + "']").hide ();    
+    $(".calc-case--" + id + "-" + (index + 1) + ":not(.calc-row-hidden)").show ();
 };
 
 Calc.update = function (recalc) {"use strict";
     $("tr.calc-message").hide ();
     // FIXME: tr class
-    // $("tr.optional").hide ();
     $(".calc .error").removeClass ("error");
     $(".calc .warning").removeClass ("warning");
-    $(".calc tr[class*='calc-case']").hide ();
     $(".calc select").each (Calc.updateSwitch);
         
     recalc ();
@@ -52,7 +50,8 @@ Calc.init = function (recalc) {"use strict";
     $("input.calc-set-switch:checked").each (function () {
         $('input[name="' + $(this).attr ('name') + '"]:first').click ();
     });
-       
+    /*
+    // TODO: Проверка внутри    
     $(".calc-input-real input").change (function () {
         var val = $(this).val ();
         
@@ -65,6 +64,7 @@ Calc.init = function (recalc) {"use strict";
         }
     });
 
+    // TODO: Проверка внутри
     $(".calc-input-int input").change (function () {
         var val = parseFloat ($(this).val ());
         if (!isInt (val)) {
@@ -72,25 +72,29 @@ Calc.init = function (recalc) {"use strict";
         } else {
             $(this).removeClass ("error");
         }
-    });
+    }); */
     
     $("table.calc-table input, table.calc-table select").change (function () {
-        if (!$(this).hasClass ("error")) {
+    //    if (!$(this).hasClass ("error")) {
             Calc.update (recalc);
-        }
+    //    }
     });
 
     $(".calc select").change (Calc.updateSwitch);
        
     $(".calc-tool input.calc-result-switch").change (function () {
         // FIXME tr class
-        var row = $(this).parents ("div.calc-table").find ("table").find ("tr.optional");
+        var row = $(this).parents ("div.calc-table").find ("table").find ("tr.optional:not(.calc-message):not(.calc-error)");
         
         if ($(this).is (':checked')) {
+            row.removeClass ('calc-row-hidden');
             row.show ();
         } else {
+            row.addClass ('calc-row-hidden');
             row.hide ();
         }
+        
+        $(".calc select").each (Calc.updateSwitch);
     });
     
     Calc.update (recalc);
@@ -164,15 +168,30 @@ Calc.calc = function (table, method) {"use strict";
         fnCell (table, row, ".calc-cell-value").text (value);
     }
 
-    function fnOutputReal (table, row, value, factor, precision) {
-        var num, exp, text;
-        
-        num = Number ((value / factor).toPrecision (precision));
-        exp = Math.log (num) / Math.LN10;
+    function fnOutputReal (table, row, value, factor, precision) {       
+        var text;
+            
+        if (isNaN (value)) {
+            text = "?";
+        } else {
+            var num = Number ((value / factor).toPrecision (precision));
+            var exp = Math.log (num) / Math.LN10;
            
-        text = (num === 0) ? "0" : (exp < -3 ? "~0" : (exp > 4 ? "\u221E" : num));
-           
-        fnOutputString (table, row, text);
+            if (num === 0) {
+                text = "0";
+            } else if (exp < -3) {
+                text = "~0";
+            } else if (exp > 4) {
+                // text = (value > 0) ? "\u221E" : "−\u221E";
+                text = (value > 0) ? "&gt; 10<sup>4</sup>" : "&lt; −10<sup>4</sup>";
+            } else if (num > 0) {
+                text = num;
+            } else {
+                text = "−" + Math.abs (num);
+            }
+        }
+               
+        fnCell (table, row, ".calc-cell-value").empty ().append (text); 
     }
     
    function fnOutputExp (table, row, value, factor, precision) {
@@ -184,36 +203,54 @@ Calc.calc = function (table, method) {"use strict";
             exp = ((Math.log (Math.abs (value) / factor) / Math.LN10) - 0.5).toFixed (0);
             num = Number ((value / factor / Math.pow (10, exp)).toPrecision (precision));
                
-            text = (num === 0) ? "0" : (exp == 0 ? num : num + '&sdot;10<sup>' + exp + '</sup>');
-               
+            if (num == 0) {
+                text = "0";
+            } else if (exp == 0) {
+                text = num;
+            } else {
+                if (num !== 10) {
+                    text = num + '&sdot;10<sup>' + exp + '</sup>'
+                } else if (exp != -1) {
+                    text = '10<sup>' + (parseInt (exp) + 1) + '</sup>'
+                } else {
+                    text = '1';
+                }
+            }
+                           
             fnCell (table, row, ".calc-cell-value").empty ().append (text);            
         } else {
-            fnOutputString (table, row, NaN);
+            fnOutputString (table, row, "?");
         }
     }    
     
     function fnOutputComplex (table, row, value, factor, precision) {
-        var sign, numRe, expRe, numIm, expIm, text;
-        
-        numRe = Number ((value.x / factor).toPrecision (precision));
-        expRe = Math.log (Math.abs (numRe)) / Math.LN10;
+        var text;
     
-        numIm = Number ((value.y / factor).toPrecision (precision));
-        expIm = Math.log (Math.abs (numIm)) / Math.LN10;
+        if (!isNaN (value.x) && !isNaN (value.y)) {
+            var sign, numRe, expRe, numIm, expIm;
+            
+            numRe = Number ((value.x / factor).toPrecision (precision));
+            expRe = Math.log (Math.abs (numRe)) / Math.LN10;
         
-        if (expRe - expIm > 9) {
-            numIm = 0;
-        }
+            numIm = Number ((value.y / factor).toPrecision (precision));
+            expIm = Math.log (Math.abs (numIm)) / Math.LN10;
+            
+            if (expRe - expIm > 9) {
+                numIm = 0;
+            }
 
-        if (expIm - expRe > 9) {
-            numRe = 0;
+            if (expIm - expRe > 9) {
+                numRe = 0;
+            }
+                          
+            sign = value.y >= 0 ? "+" : "−";
+               
+            text = numRe + "" + sign + "j" + Math.abs (numIm); 
+        } else {
+            text = "?";
         }
-                      
-        sign = value.y >= 0 ? "+" : "-";
-           
-        text = numRe + " " + sign + " j" + Math.abs (numIm); 
         
-        fnOutputString (table, row, text);   
+        fnOutputString (table, row, text);
     }
 
     function fnOutputMessage (table, message, type) {

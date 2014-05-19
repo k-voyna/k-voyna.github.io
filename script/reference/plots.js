@@ -29,19 +29,9 @@ Plots = {
     
     logDB : function () {"use strict";
         return {
-            color : "#225",
+            color : "#111",
             axisLabel : "Коэффициент усиления, дБи",
-            position : "left",/*
-            ticks : [[0, "0"],
-                     [-0.6, "-6"], 
-                     [-1, "-10"], 
-                     [-2, "-20"],
-                    ],
-                          
-            transform: function (y) {
-                return 10 * Math.log (y + 1e-12); 
-            },*/   
-            //max : 0
+            position : "left"
         };
     },          
     
@@ -185,26 +175,11 @@ Plots = {
             axisLabel: "Частота, кГц",                        
             color : "#000000"
         };     
-    },    
+    },
+    
+    
     linFx : function (fmin, fmax) {"use strict";
         return {           
-        /*
-            ticks: function (axis) {
-                var ticks = [];
- 
-                // XXX: привязка к 100, 250, 500, 1000, 2500, 5000
-                var delta = (axis.max - axis.min) / 8;
-                var exp = Math.pow (10, Math.round (Math.log10 (axis.max)) - 1);
-                
-                delta = Math.round (delta / exp) * exp;
-                               
-                for (var f = 0; f <= axis.max; f += delta) {
-                    ticks.push (f);
-                }
-                
-                return ticks;
-            },
-            */
             tickFormatter : function formatter (val, axis) {
                 if (Math.abs (val) < 1e3) {
                     return val.toFixed (axis.tickDecimals);
@@ -218,33 +193,37 @@ Plots = {
             min : fmin,
             max : fmax,            
             axisLabel: "Частота, Гц",                        
-            color : "#000000"
+            color : "#111"
         };     
     },
     linRx : function () {"use strict";
         return {
             axisLabel: "Активное сопротивление, Ом",
-            color : "#000",
+            color : "#111",
             position: "left",
             tickFormatter : function formatter (val, axis) {
                 if (Math.abs (val) < 1e3) {
                     return val.toFixed (axis.tickDecimals);
+                } else if (Math.abs (val) < 1e6) {
+                    return (val.toFixed (axis.tickDecimals) / 1e3).toString () + "к";
                 } else {
-                    return (val / 1e3).toString () + "к";
+                    return (val.toFixed (axis.tickDecimals) / 1e6).toString () + "М";
                 }
-            },
+            }
         };     
     },    
     linXx : function () {"use strict";
         return {
             axisLabel: "Реактивное сопротивление, Ом",
-            color : "#22C",
+            color : "#11E",
             position: "right",
             tickFormatter : function formatter (val, axis) {
                 if (Math.abs (val) < 1e3) {
                     return val.toFixed (axis.tickDecimals);
-                } else {
+                } else if (Math.abs (val) < 1e6) {
                     return (val.toFixed (axis.tickDecimals) / 1e3).toString () + "к";
+                } else {
+                    return (val.toFixed (axis.tickDecimals) / 1e6).toString () + "М";
                 }
             }
         };     
@@ -306,9 +285,9 @@ Plots = {
     dataC : function (array, label) {"use strict";
         return {
             data : array,
-            color : "#000",
+            color : "#111",
             label: label,
-            shadowSize : 2
+            shadowSize : 0
         };
     },
     
@@ -368,20 +347,34 @@ Plots = {
             X.push ([freq, Z.y]);
         }
         
-        return [
-            Plots.dataC (R,  "R", 1),
-            Plots.dataB (X, "jX", 2) 
-        ];
+        return [{
+            data : R,
+            color : "#111",
+            yaxis : 1,
+            shadowSize : 0,
+            width: 2
+         }, {
+            data : X,
+            color : "#11e",
+            yaxis : 2,
+            shadowSize : 0,
+            width: 2
+        }];
     },
     
     impedanceResponseAxes : function (ff) {"use strict";
         return {
             xaxis: Plots.linFx (ff [0], ff [1]),
             yaxes: [Plots.linRx (), Plots.linXx ()],
-            legend: {
-                show: true,
-                noColumns : 2,
-                position: "nw"
+            series: {
+                lines : {
+                    lineWidth: 2
+                }
+            },
+            grid: {
+                backgroundColor: "#fff",
+                borderWidth: 2,
+                borderColor: "#555"
             }
         };
     },
