@@ -22,7 +22,7 @@ Grounds = {
     },
     'wet soil' : {
         sigma : 0.01,
-        eps : 20
+        eps : 15
     },
     'fresh water' : {
         sigma : 0.001,

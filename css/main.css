@@ -34,6 +34,10 @@ body {
     color: #111;
 }
 
+.software-list li {
+    margin-top: 1em;
+}
+
 .version {
     text-align: center;
     font-size: small;
@@ -42,6 +46,15 @@ body {
 .navigation {
     font-size: small;
     text-align: center;
+}
+
+.ref {
+    padding: 1em 1em;
+    background-image: url(../img/bg.jpg) !important;
+}
+
+.ref li {
+    padding-top: 0.5em;
 }
 
 h1, h2 {
@@ -104,6 +117,10 @@ table.calc-table tr {
 	box-shadow: inset 0px 0px 1px 2px #8cf;
 	-webkit-box-shadow: inset 0px 0px 1px 2px #8cf;
 	-moz-box-shadow: inset 0px 0px 1px 2px #8cf;
+}
+
+.calc-table a {
+    color: #131;
 }
 
 /* --------------------------- sections ---------------------------- */
@@ -243,7 +260,7 @@ table.calc-table tr.calc-message.error {
     width: 300px;    
 }
 
-div.calc-table {
+div.calc-table, .ref  {
     margin: 3em auto;
 	background: #fff;
     -webkit-box-shadow: 1px 1px 3px 0px rgba(50, 50, 50, 0.68);

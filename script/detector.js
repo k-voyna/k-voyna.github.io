@@ -4,6 +4,8 @@
 /*global Materials: true, Grounds: true, Plots: true, Diodes: true */
 /*global Conductor: true, Capacitor: true */
 
+// XXX: точный расчет сопротивления потерь в обмотке наушников
+// XXX: зависимость селективности от уровня напряжения
 function crystal () {"use strict";
     var diode = Calc.calc ({
         name : "diode",
@@ -175,7 +177,7 @@ function crystal () {"use strict";
             for (var n = 0; n < this.N; ++n) {
                 var z1 = new Complex (this.r1, omega * this.L1);
                 var z2 = new Complex (0, -1 / (omega * this.C1));
-                var z3 = new Complex (this.R1, 0);
+                var z3 = new Complex (this.R1 * 1e9, 0); // XXX: подобрать сопротивление потерь
                 
                 Z = Z.sum (z1.par (z2.par (z3)));
             }
@@ -343,7 +345,7 @@ function crystal () {"use strict";
             fo : [1e3],
             fOmin : [1e0],
             fOmax : [1e0],
-            Pi : [4, 10, 1],
+            Pi : [4, 10, 1], // Пик-фактор звукового сигнала по напряжению. Выходец, с.10
             m : [1e0],
             Cx : [1e-12],
         //    k : [8, 6, 4, 3, 2, 1, 1 / 2, 1 / 3, 1 / 4, 1 / 6, 1 / 8],

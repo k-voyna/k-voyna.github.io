@@ -42,7 +42,7 @@ function crystal () {"use strict";
             ground_A : [1e0]
 		},
 		output : {
-			lambda : [1e0, 3],
+			lambda : [1e0, 4],
 
 			wire_De : [1e-3, 2],
 			W : [1e0, 2],
@@ -75,11 +75,12 @@ function crystal () {"use strict";
 
 			Za : [1e0, 2, "complex"],
 			La : [1e-6, 2],
-			Ca : [1e-12, 2]
+			Ca : [1e-12, 2],
+            Qa : [1e0, 2]
 		}
 	}, function () {
 		// длина волны
-		this.check (this.f >= 1e3 && this.f <= 3e7, "f");
+		this.check (this.f >= 1e5 && this.f <= 3e7, "f");
 		this.lambda = Phys.C / this.f;
 
 		// @formatter:off
@@ -214,6 +215,7 @@ function crystal () {"use strict";
 		this.he = antennaAtLamda.le;
 		this.Za = antennaAtLamda.Z;
 		this.eta = antennaAtLamda.eta;
+        this.Qa = antennaAtLamda.Q;
 		this.D = antennaAtLamda.D ();
 		this.G = Math.log10 (this.D * this.eta);
         this.psi = 2 * Math.PI * antennaAtLamda.be / this.lambda * 180 / Math.PI;
@@ -224,7 +226,7 @@ function crystal () {"use strict";
 
         this.check (this.be < this.lambda * KBMAX, "be");
         this.check (this.he < this.lambda * KHEMAX, "he");
-        this.check (!isNaN (this.f0), "f0");
+        this.suggest (!isNaN (this.f0), "f0");
 
         this.fnZ = function (f) {
             return antenna.fn (Phys.C / f).Z;
@@ -280,7 +282,7 @@ function crystal () {"use strict";
 			delta : [1e0, 2],
 
 			Zo : [1e3, 2, "complex"],
-			Eo : [1e0, 2],
+			Eo : [1e-3, 2],
 
 			za : [1e0, 2, "complex"],
 
@@ -389,10 +391,12 @@ function crystal () {"use strict";
 				result.zL = Phys.fnInductor (f, L, QL).Z;
 				result.zC = Phys.fnCapacitor (f, C, QC).Z;
 				result.zRLC = result.zL.par (result.zR).par (result.zC);
-				result.z = result.zA.sum (result.zCs).sum (result.zRLC);
+                
+                var Z = result.zA.sum (result.zCs);
+				result.z = Z.sum (result.zRLC);
 
-				result.ZL = result.zA.sum (result.zCs).par (result.zL).par (result.zC);
-				result.Qn = result.zRLC.par (result.zA.sum (result.zCs)).x / result.zL.y;
+				result.ZL = Z.par (result.zL).par (result.zC);
+				result.Qn = result.zRLC.par (Z).x / result.zL.y;
 
 				result.fnU = function (E) {
 					return new Complex (aerial.fnE (E), 0).div (result.z).mul (result.zRLC);
@@ -424,7 +428,7 @@ function crystal () {"use strict";
 			this.Xmin = Phys.fnCapacitor (this.f, this.Cmin, this.QC).Z.y;
 			this.Xmax = Phys.fnCapacitor (this.f, this.Cmax, this.QC).Z.y;
 			this.check (this.X >= this.Xmin && this.X <= this.Xmax, "X");
-
+            
 			this.Cx = Math.clamp (1 / (-this.X * omega), this.Cmin, this.Cmax);
 
 			var fnCircuit = function (f, aerial, L, QL, C, QC, R) {
@@ -470,6 +474,7 @@ function crystal () {"use strict";
 
 		var circuitAtF = this.fnCircuit (this.f).x;
 
+        // XXX: Учесть коэффициент включения в контур
 		this.za = circuitAtF.z;
 		this.Zo = circuitAtF.ZL;
 		this.Rn = this.Zo.mod ();

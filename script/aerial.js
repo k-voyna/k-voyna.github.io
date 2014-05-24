@@ -60,24 +60,26 @@ Antenna = {
 		Xright = fX (Fright);
 
 		for (; ; ) {
-			if (Xleft < 0 && Xright < 0) {
+           // console.log (Fleft + ' ' + Xleft);
+        
+            if ((Xleft < 0 && Xright < 0) || isNaN (Xleft)) {
 				Xleft = Xright;
 				Fleft = Fright;
-				Fright = Fright * 1.1;
+				Fright = Fright * 1.01;
 				Xright = fX (Fright);
 			} else if (Xleft < 0 && Xright > 0) {
 				Fright = Fleft + (Fright - Fleft) / 2;
 				Xright = fX (Fright);
 			} else {
-				Fleft = NaN;
+                Fleft = NaN;
 				break;
-			}
+			} 
 
 			if (Math.abs (Xleft) < min) {
 				break;
-			}
-
-			if (Fleft > bounds [1] || isNaN (Xleft) || isNaN (Xright)) {
+			}            
+            
+			if (Fleft > bounds [1]) {
 				Fleft = NaN;
 				break;
 			}
@@ -237,13 +239,13 @@ function MonopoleRadiator (h, D, d, N, g, mu, ground) {"use strict";
                 
         result.ZSn = fnZSn (lambda);
         result.Zgn = fnZGn (lambda);
-        result.R1 = fnR1 (lambda) / 2;
+        result.R1 = fnR1 (lambda); 
         
         var kkh2 = 2 * result.kk * h;        
         var m = (1 - Math.sin (kkh2) / (kkh2)) * h;
         
-        result.Zn = result.ZSn.sum (result.Zgn).sum (new Complex (result.R1 * m, 0));
-        result.Z1 = result.ZSn.sum (result.Zgn).div (new Complex (m, 0)).sum (new Complex (result.R1, 0));
+        result.Zn = result.ZSn.sum (result.Zgn).sum (new Complex (result.R1 / 2 * m, 0));
+        result.Z1 = result.ZSn.sum (result.Zgn).div (new Complex (m, 0)).sum (new Complex (result.R1 / 2, 0));
         result.beta = result.Z1.div (new Complex (result.W, 0));
         result.W1 = Antenna.fnLossyTransmissionLineWaveImpedance (result.W, result.beta, result.k);
 		result.Z = Antenna.fnLossyOpenedTransmissionLineInputImedance (result.W1, h, result.beta, result.kk);
@@ -255,7 +257,7 @@ function MonopoleRadiator (h, D, d, N, g, mu, ground) {"use strict";
 	var f0 = Antenna.fnResonance (function (f) {
 		var lambda = Phys.C / f;
 		return fnY (lambda, fnZSn, fnR1, fnZGn).Z.y;
-	}, [10e3, 1000e6], 1);
+	}, [1e3, 1000e6], 2);
 
 	var lambda0 = Phys.C / f0;
 
@@ -303,9 +305,18 @@ function MonopoleRadiator (h, D, d, N, g, mu, ground) {"use strict";
 			return (Phys.Z0 / Math.PI) * Math.pow (result.fnF (Theta), 2) / ae.ZSn.x;
 		};
 
+        var k = 2 * Math.PI / lambda;
+        var sinkl = Math.sin (k * h);
+        result.Q = (ae.W * k * h / Math.pow (sinkl, 2)) / result.Z.x;        
+               
 		// КНД макс.
 		// FIXME: упростить выражение
-		result.D = Phys.Z0 / Math.PI * Math.pow (Antenna.fnMaxFunctionValue (result.fnF, -Math.PI / 2, Math.PI / 2), 2) / ae.ZSn.x;        
+		result.D = function () {
+            if (this._D === undefined)
+                this._D = Phys.Z0 / Math.PI * Math.pow (Antenna.fnMaxFunctionValue (result.fnF, -Math.PI / 2, Math.PI / 2), 2) / ae.ZSn.x;
+                
+            return this._D;                
+        };
         
 		return result;
 	};
@@ -338,7 +349,7 @@ function IdealIsotropicRadiator () {"use strict";
 			return 1;
 		};
 
-		result.D = 1;
+		result.D = function () { return 1; };
 		result.eta = 1;
 
 		return result;
@@ -411,6 +422,8 @@ function MagneticLoop (D, w, h, d, N, g, mu) {"use strict";
         // Q    
         result.L = result.W * l / Phys.C;
         result.C = result.L / Math.pow (result.W, 2);
+        
+        // XXX: точный расчет по Надененко
         result.Q = Math.sqrt (result.L / result.C) / (result.RS + result.Rl);
         
 		// КНД
@@ -426,6 +439,20 @@ function MagneticLoop (D, w, h, d, N, g, mu) {"use strict";
 
 		return result;
 	};
+}
+
+ // MonopoleRadiator (h, D, d, N, g, mu, ground)
+function OptimalMonopoleRadiator (k, lambda, g, sigma, eps) {"use strict";
+    var ground = new RadialGround (sigma, eps, 3, lambda / 2, 1e-3, 120);
+	return new MonopoleRadiator (k * lambda, 0.5, 0.5, 1, g, 1, ground);
+}
+
+// RadialGround (g, eps, s, A, rho, n)
+function OptimalLoadedMonopoleRadiator (lambda, g, sigma, eps) {"use strict";
+    var h = Math.min (lambda * 0.38, 250);
+    var b = Math.min (Math.min (lambda * 0.4, 250), h / 2);
+    var ground = new RadialGround (sigma, eps, 3, lambda / 2, 1e-3, 120);
+	return new LongWire (h, h, b, 2, 0, 1, g, 1, ground);
 }
 
 function LongWire (h, l, b, nb, f, d, g, mu, ground) {"use strict";
@@ -457,7 +484,7 @@ function LongWire (h, l, b, nb, f, d, g, mu, ground) {"use strict";
     
     function fnY (lambda, fnRSn, fnR1, ground) {
         var result = [];        
-                          
+                                                   
         // волновой коэффициент
         result.k = 2 * Math.PI / lambda;
         
@@ -465,10 +492,11 @@ function LongWire (h, l, b, nb, f, d, g, mu, ground) {"use strict";
 		// Кочержевский Г.Н. Антенно-фидерные устройства. 1989. с. 73
         // FIXME: Полная модель линии
         var Wbn = Wb / nb;
-        var Xb = Wbn / Math.tan (result.k * b);
-        var kbe = (Math.atan (W / Xb) + Math.PI) % Math.PI;       
+        result.Xb = Wbn / Math.tan (result.k * b);
+        
+        var kbe = (Math.atan (W / result.Xb) + Math.PI) % Math.PI;       
         result.be = kbe / result.k;
-                 
+                         
         var hbe = (l - h) / 2;
         
         // эквивалентная длина
@@ -512,7 +540,7 @@ function LongWire (h, l, b, nb, f, d, g, mu, ground) {"use strict";
     var f0 = Antenna.fnResonance (function (f) {
         var lambda = Phys.C / f;
         return fnY (lambda, fnRSn, fnR1, ground).Z.y;
-    }, [10e3, 1000e6], 1);
+    }, [1e3, 100e6], 1);
 
     var lambda0 = Phys.C / f0;
 
@@ -520,6 +548,7 @@ function LongWire (h, l, b, nb, f, d, g, mu, ground) {"use strict";
         var ae = fnY (lambda, fnRSn, fnR1, ground);
         
 		var result = {};
+        result.h = h;
         result.Rgn = ae.Zgn.x;
         result.Sg = ae.Sg;
 		result.W = W;
@@ -574,6 +603,11 @@ function LongWire (h, l, b, nb, f, d, g, mu, ground) {"use strict";
         
 		// КПД
 		result.eta = ae.RSn / ae.Rn;
+        
+        // Q
+        var k = 2 * Math.PI / lambda;
+        var sinkle = Math.sin (k * ae.le);
+        result.Q = (W * k * l / Math.pow (sinkle, 2) + Math.pow (W * Math.cos (2 * Math.PI * ae.be / lambda) / sinkle, 2) / Math.abs (ae.Xb)) / result.Z.x;
 
 		// Э.Д.С. эквивалентного генератора
         // FIXME: Проверить
@@ -691,3 +725,5 @@ function RadialGround (g, eps, s, A, rho, n) {"use strict";
         return result;
     };
 }
+
+// XXX: Уточнить расчет добротности (гиперболический синус)

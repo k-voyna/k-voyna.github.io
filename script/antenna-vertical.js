@@ -35,7 +35,8 @@ function crystal () {"use strict";
         output : {       
             lambda : [1e0, 3],
             wire_De : [1e-3, 2],
-             
+            
+            Qa: [1e0, 2],
             Ca: [1e-12, 2],
             La: [1e-6, 2],
              
@@ -203,9 +204,10 @@ function crystal () {"use strict";
         this.sg = antennaAtLamda.sg.mod ();
         this.Rg = antennaAtLamda.Zgn.x;
         this.RS = antennaAtLamda.ZSn.x;
+        this.Qa = antennaAtLamda.Q;
         
         this.eta = antennaAtLamda.eta;
-        this.D = antennaAtLamda.D;
+        this.D = antennaAtLamda.D ();
         this.G = Math.log10 (this.D * this.eta);   
         
         this.f0 = antennaAtLamda.f0;
@@ -220,7 +222,7 @@ function crystal () {"use strict";
  		this.Ca = antennaAtLamda.C;
 		this.La = antennaAtLamda.L;
 
-        this.plot (Plots.radiationPatternData (antennaAtLamda.fnD, antennaAtLamda.D), Plots.radiationPatternAxes (), 0);
+        this.plot (Plots.radiationPatternData (antennaAtLamda.fnD, antennaAtLamda.D ()), Plots.radiationPatternAxes (), 0);
 
         var band = Plots.band (this.f, 1e9);
         this.plot (Plots.impedanceResponseData (this.fnZ, band, 200), Plots.impedanceResponseAxes (band), 1);
