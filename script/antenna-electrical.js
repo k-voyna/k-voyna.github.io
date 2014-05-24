@@ -238,7 +238,7 @@ function crystal () {"use strict";
 	});
 	
 	var circuit = Calc.calc ({
-		name : "circuit-1K",
+		name : "circuit1K",
 		input : {
 			// freq
 			f : antenna.f,
