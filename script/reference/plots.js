@@ -81,7 +81,7 @@ Plots = {
         return {
             color : "#000000",
             axisLabel : "Напряженность поля, В/м",
-            ticks : [
+            ticks : [[1e-7, "10<sup>-7</sup>"], 
                      [1e-6, "10<sup>-6</sup>"], 
                      [10e-6, "10<sup>-5</sup>"], 
                      [100e-6, "10<sup>-4</sup>"], 
@@ -89,7 +89,7 @@ Plots = {
                      [10e-3, "10<sup>-2</sup>"], 
                      [100e-3, "10<sup>-1</sup>"], 
                      [1, "1"], 
-                     [10, "10<sup>1</sup>"]],
+                     [10, "10"]],
                              
             transform: function (y) {
                 return Math.log (y + 1e-12); 

@@ -443,8 +443,9 @@ function MagneticLoop (D, w, h, d, N, g, mu) {"use strict";
 
  // MonopoleRadiator (h, D, d, N, g, mu, ground)
 function OptimalMonopoleRadiator (k, lambda, g, sigma, eps) {"use strict";
-    var ground = new RadialGround (sigma, eps, 3, lambda / 2, 1e-3, 120);
-	return new MonopoleRadiator (k * lambda, 0.5, 0.5, 1, g, 1, ground);
+    var ground = new RadialGround (sigma, eps, 3, lambda / 2, 1e-3, 60);
+    var d = k * lambda / 100;
+	return new MonopoleRadiator (k * lambda, d, d, 1, g, 1, ground);
 }
 
 // RadialGround (g, eps, s, A, rho, n)

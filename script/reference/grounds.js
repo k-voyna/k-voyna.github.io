@@ -13,19 +13,19 @@ Grounds = {
         eps : 1
     },
     'sandy soil' : {
-        sigma : 0.001,
-        eps : 3
+        sigma : 0.0003,
+        eps : 7
     },
     'dry soil' : {
-        sigma : 0.003,
-        eps : 5
+        sigma : 0.001,
+        eps : 15
     },
     'wet soil' : {
         sigma : 0.01,
-        eps : 15
+        eps : 30
     },
     'fresh water' : {
-        sigma : 0.001,
+        sigma : 0.003,
         eps : 80
     },
     'sea water' : {
