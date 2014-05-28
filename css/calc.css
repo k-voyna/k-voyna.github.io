@@ -22,13 +22,8 @@ table.calc-table {
 }
 
 .calc td.calc-cell-name {
-    width: 570px;
     padding-left: 0.5em;
     padding-right: 0.5em;
-}
-
-.calc td.calc-cell-notation {
-    width: 6em;
 }
 
 .calc td.calc-cell-value {

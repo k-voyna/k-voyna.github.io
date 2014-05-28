@@ -7,8 +7,6 @@
 // TODO: Уточнить фазы при интерференции (сдвиг фаз поверхностной в частности)
 // TODO: Ввод эквивалентной SIGMA и F
 // TODO: Мёртвое море 27 проводимость
-// TODO: Конец зоны 50% замирания
-// TODO: Зона 100% замирания
 // TODO: Отсортировать по важности влияния
 // TODO: Отдельный тип поверхности в конце трассы
 // TODO: Два типа поверхности, в конце и начале, средине
@@ -30,14 +28,20 @@ function crystal () {"use strict";
         name : "broadcast",
         input : {
             f : [1e3],
-            P : [1e3],
+            PERP : [1e3],
+            PTPO : [1e3],
+            power : ['TPO', 'ERP'],
+            
             D : [1e3],
             H : [1e3],
+            
             ground : ['mountains', 'polar ice', 'forest', 'sandy soil', 'dry soil', 'wet soil', 'fresh water', 'sea water', '!'],
             ground_sigma : [1e-3],
             ground_eps : [1e0],
+            
             time : ['day', 'night'],
-            antenna: ['.', 'D1.5',  '0.25', '0.53' , '0.65', 'T', '3T'],
+            antenna: ['.', '0.01',  '0.25', '0.53' , '0.625'],
+                        
             CCIR : ['n', 'y'],
             CCIR_W : [],
             CCIR_T : [16, 17, 18, 19, 20, 21, 22, 23, 0, 1, 2, 3, 4, 5, 6, 7],
@@ -50,7 +54,8 @@ function crystal () {"use strict";
             sigma1MHz : [1e+0, 2, "exp"],
             eps : [1e+0, 2],
             Pi : [1e0, 2, "exp"],
-            h : [1e0, 3],
+            P_EIRP : [1e3, 2],
+            P_ERP : [1e3, 2],
             E0 : [1e-3, 2],
             Es : [1e-3, 2],
             Eg : [1e-3, 2],
@@ -60,7 +65,6 @@ function crystal () {"use strict";
             gamma : [Math.PI / 180, 2],
             hs : [1e3, 2],
             E : [1e-3, 2],
-            Ga : [1e-1, 2],
             Da : [1e-1, 2],
             DCCIR : [1e-1, 2],
             Dn : [1e-1, 2],
@@ -79,7 +83,6 @@ function crystal () {"use strict";
     }, function () {       
         // проверка входных значений       
         this.check (this.f >= 150e3 && this.f <= 2e6, "f");
-        this.check (this.P > 0 && this.P <= 10e6, "P");
         this.check (this.D >= 1e3 && this.D <= 10e6, "D");
         this.check (this.time === 'day' || (this.H >= 90e3 && this.H <= 120e3), "H");
 
@@ -109,47 +112,42 @@ function crystal () {"use strict";
                 antenna = new IdealIsotropicRadiator ().fn (this.lambda);
                 break;
 
-            case 'T':
-                antenna = new OptimalLoadedMonopoleRadiator (this.lambda, Materials ['Zn'].g, Grounds['dry soil'].sigma, Grounds['dry soil'].eps).fn (this.lambda);
-                break;
-
-            case 'D1.5':
+            case '0.01':
                 antenna = new IdealMonopoleRadiator (this.lambda * 0.01, 0.05).fn (this.lambda);
                 antenna.eta = 1 / antenna.D ();
                 break;
-                
-            case '3T':
-                // FIXME: 
-                antenna = new IdealIsotropicRadiator ().fn (this.lambda);
-                break;                
-                
+                              
             case '0.25':
-                antenna = new OptimalMonopoleRadiator (0.25, this.lambda, Materials ['Zn'].g, Grounds['dry soil'].sigma, Grounds['dry soil'].eps).fn (this.lambda);
+                antenna = new IdealMonopoleRadiator (this.lambda * 0.25, 0.05).fn (this.lambda);
                 break;
                 
             case '0.53':
-                antenna = new OptimalMonopoleRadiator (0.53, this.lambda, Materials ['Zn'].g, Grounds['dry soil'].sigma, Grounds['dry soil'].eps).fn (this.lambda);
+                antenna = new IdealMonopoleRadiator (this.lambda * 0.53, 0.05).fn (this.lambda);
                 break;
-                
-            case '0.65':
-                antenna = new OptimalMonopoleRadiator (0.64, this.lambda, Materials ['Zn'].g, Grounds['dry soil'].sigma, Grounds['dry soil'].eps).fn (this.lambda);
+
+            case '0.625':
+                antenna = new IdealMonopoleRadiator (this.lambda * 0.625, 0.05).fn (this.lambda);
                 break;
         }
 
-        this.h = antenna.h;
+        if (this.power === 'ERP') {
+            this.check (this.PERP > 0 && this.PERP <= 10e6, "PE");
+            this.P_ERP = this.PERP;
+            this.P_EIRP = this.PERP * 1.5;
+            this.P = this.P_EIRP / antenna.D ();            
+        } else {
+            this.check (this.PTPO > 0 && this.PTPO <= 10e6, "PTPO");
+            this.P = this.PTPO;
+            this.P_EIRP = antenna.D () * this.P;
+            this.P_ERP = this.P_EIRP / 1.5;
+        }
         
-        // Надененко, с.280
-        this.suggest (this.h <= 250, "h");
-
         this.dfa = this.f / (antenna.Q + Math.abs (antenna.Z.y / antenna.Z.x));
-        this.etaa = antenna.eta;
         this.Da = Math.log10 (antenna.D ());
-        this.Ga = Math.log10 (antenna.D () * antenna.eta);
-        this.suggest (this.time === "day" || this.antenna !== '0.65', "antenna065");
                
         // рассчет напряженности поля поверхностной волны
-        function fnEg (lambda, P, d, fnD, eta, sigma, eps) {
-            var E0 = Groundwave.E0 (P, d, fnD, eta, Math.PI / 2);
+        function fnEg (lambda, P, d, fnD, sigma, eps) {
+            var E0 = Groundwave.E0 (P, d, fnD, Math.PI / 2);
             var Fg = Groundwave.GroundFactor (lambda, d, sigma, eps);
             var Fn = Groundwave.NearFieldFactor (lambda, d);
             var Fd = Groundwave.DiffractionFactor (lambda, d, sigma, eps);
@@ -157,8 +155,8 @@ function crystal () {"use strict";
             return E0 * Fg * Fn * Fd;
         }
         /*
-        function fnEg1 (lambda, P, d, fnD, eta, sigma, eps) {
-            var E0 = Groundwave.E0 (P, d, fnD, eta, Math.PI / 2);
+        function fnEg1 (lambda, P, d, fnD, sigma, eps) {
+            var E0 = Groundwave.E0 (P, d, fnD, Math.PI / 2);
             var Fg = Groundwave.GroundFactor (lambda, d, sigma, eps);
             var Fn = Groundwave.NearFieldFactor (lambda, d);
             var Fd = Groundwave.FokFactor (lambda, d, sigma, eps);
@@ -166,8 +164,8 @@ function crystal () {"use strict";
             return E0 * Fd;
         }       
         */
-        this.E0 = Groundwave.E0 (this.P, this.D, antenna.fnD, antenna.eta, Math.PI / 2);
-        this.Eg = fnEg (this.lambda, this.P, this.D, antenna.fnD, antenna.eta, this.sigma, this.eps);
+        this.E0 = Groundwave.E0 (this.P, this.D, antenna.fnD, Math.PI / 2);
+        this.Eg = fnEg (this.lambda, this.P, this.D, antenna.fnD, this.sigma, this.eps);
                
         this.Dn = 2 * Math.log10 (Groundwave.NearFieldFactor (this.lambda, this.D));        
         this.Dg = 2 * Math.log10 (Groundwave.GroundFactor (this.lambda, this.D, this.sigma, this.eps));
@@ -175,15 +173,15 @@ function crystal () {"use strict";
               
         // рассчет напряженности поля ионосферной волны. 
         // Формула ММКР + учет ДН передающей антенны + учет поляризации при вторичном отражении от земли (см. Надененко)
-        function fnSkywaveE (lambda, P, fnD, eta, D, H, sigma, eps, Fx) {
+        function fnSkywaveE (lambda, P, fnD, D, H, sigma, eps, Fx) {
             // угол излучения/падения
             var Theta = Skywave.ZenithAngle (D, H);
             
             // излучаемая мощность
-            var PE = P * fnD (Theta) * eta;
+            var PEIRP = P * fnD (Theta);
             
             // волнодвижущая сила
-            var EE = 9.49 * Math.sqrt (PE);
+            var EE = Math.sqrt ((Phys.Z0 / (2 * Math.PI)) * PEIRP);
 
             // поправка на зависимость ослабления от дальности распространения и длины волны
             var Fd = Skywave.DistanceFactor (lambda, D);
@@ -193,11 +191,11 @@ function crystal () {"use strict";
             // TODO: Учитывать проводимость земли
             var Ft = Math.sin (Theta); // ~ Math.sqrt (1 - Math.cos (2 * Theta)) / Math.sqrt (2);
             
-            // физическая модель + поправка на дальность от CCIR
-            // return Fd * Fx * Ft * EE / Skywave.BeamDistance (D, H); 
+            // геометрическая модель + поправка на дальность от CCIR
+            return Fd * Fx * Ft * EE / Skywave.BeamDistance (D, H);
             
             // эмпирическая формула CCIR + поправка на взаимокомпенсацию падающей и отраженной волн
-            return Fd * Fx * Ft * EE * (0.010233 / 9.49) / Math.sqrt (D);
+            // return Fd * Fx * Ft * EE * (0.010233 / Math.sqrt (Phys.Z0 / (2 * Math.PI))) / Math.sqrt (D);
         }
       
         // центральный угол
@@ -222,7 +220,7 @@ function crystal () {"use strict";
         this.Dt = 2 * Math.log10 (Math.cos (this.phi));
         
         // напряженность пространственной волны        
-        this.Es = fnSkywaveE (this.lambda, this.P, antenna.fnD, antenna.eta, this.D, this.H, this.sigma, this.eps, CCIR);
+        this.Es = fnSkywaveE (this.lambda, this.P, antenna.fnD, this.D, this.H, this.sigma, this.eps, CCIR);
        
         // Напряженность поля при интерференции двух волн        
         function fnInterference (E1, E2, lambda, d1, d2, alpha) {
@@ -266,9 +264,9 @@ function crystal () {"use strict";
         // расчет зависимости E=f(D) и границ зон уверенного приема
         for (var D = 1e3; D <= 10000e3; D = Math.pow (D, 1.002)) {
             var FCCIR = (this.CCIR === 'y') ? Skywave.CCIRFactor (this.CCIR_M, this.CCIR_T, this.CCIR_P, this.CCIR_W, D) : 1;
-            var vEs = fnSkywaveE (this.lambda, this.P, antenna.fnD, antenna.eta, D, this.H, this.sigma, this.eps, FCCIR);
-            var vEg = fnEg (this.lambda, this.P, D, antenna.fnD, antenna.eta, this.sigma, this.eps);
-            // var vEf = fnEg1 (this.lambda, this.P, D, antenna.fnD, antenna.eta, this.sigma, this.eps);
+            var vEs = fnSkywaveE (this.lambda, this.P, antenna.fnD, D, this.H, this.sigma, this.eps, FCCIR);
+            var vEg = fnEg (this.lambda, this.P, D, antenna.fnD, this.sigma, this.eps);
+            // var vEf = fnEg1 (this.lambda, this.P, D, antenna.fnD, this.sigma, this.eps);
             
             // граница зоны 50%-замираний
             if (vEg < vEs * 2) {

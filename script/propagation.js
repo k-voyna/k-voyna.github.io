@@ -1,9 +1,7 @@
 ﻿Groundwave = {
     // напряженность поля для идеальной среды
-    E0 : function (P, d, fnD, eta, Theta) {          
-        // XXX:
-        //return Math.sqrt ((Phys.Z0 / Math.PI) / 2 * P * fnD (Theta) * eta) / d;
-        return 300 * Math.sqrt (P * fnD (Theta) * eta * 1e-3) / d;
+    E0 : function (PE, d, fnD, Theta) {          
+        return Math.sqrt ((Phys.Z0 / Math.PI) / 2 * PE * fnD (Theta)) / d;
     },
 
     // коэффициент затухания поверхностной волны [Гинкин Г.Г. Справочник по радиотехнике 1948, с. 740]

@@ -34,6 +34,14 @@ body {
     color: #111;
 }
 
+.calc td.calc-cell-value {
+    width: 7em;
+}
+
+.calc td.calc-cell-notation {
+    width: 6em;
+}
+
 .software-list li {
     margin-top: 1em;
 }
@@ -96,6 +104,10 @@ table.calc-table tr {
      border-top: dotted 1px #aaa; 
 }
 
+.calc-input-real input, .calc-input-int input, .calc-input-enum select  {
+    width: 7em;
+}
+
 .calc-input-real input, .calc-input-int input, .calc-input-enum select {
     background: #fff;
     border: 1px solid #aaa;
@@ -104,7 +116,6 @@ table.calc-table tr {
     -ms-box-sizing:border-box;
     -moz-box-sizing:border-box;
     -webkit-box-sizing:border-box;
-    width: 7em;
     outline: none;
 }
 
@@ -125,7 +136,7 @@ table.calc-table tr {
 
 /* --------------------------- sections ---------------------------- */
 table.calc-table tr.section1.calc-group-start {
-    border-top: solid 1px #ccc;
+    border-top: solid 1px #AAA;
 }
 
 .section1 {
