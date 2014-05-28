@@ -11,7 +11,7 @@ function crystal () {"use strict";
     var KHEMAX = 0.45;
 
 	var antenna = Calc.calc ({
-		name : "antenna-electrical",
+		name : "antenna_electrical",
 		input : {
 			// freq
 			f : [1e3],
