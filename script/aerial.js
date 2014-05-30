@@ -527,9 +527,7 @@ function LongWire (h, l, b, nb, f, d, g, mu, ground) {"use strict";
         
         var kbe = (Math.atan (W / result.Xb) + Math.PI) % Math.PI;       
         result.be = kbe / result.k;
-                         
-        var hbe = (l - h) / 2;
-        
+
         // эквивалентная длина
         result.le = l + result.be;
         result.he = h + result.be;
@@ -547,8 +545,10 @@ function LongWire (h, l, b, nb, f, d, g, mu, ground) {"use strict";
         result.RSnD = fnRSn (lambda, h, h + result.be, result.be);
                 
         // заземление
-        var gnd = ground.fn (lambda, l, l + result.be, result.be); 
-        gnd.Zn = gnd.Zn.mul (new Complex (cosksi * cosksi, 0));
+        var hx = h * cosksi;
+        var bex = l - hx;
+        var gnd = ground.fn (lambda, hx, hx + bex + result.be, bex + result.be); 
+       // gnd.Zn = gnd.Zn.mul (new Complex (cosksi * cosksi, 0));
         
         result.Zgn = gnd.Zn;
         result.Sg = gnd.S;  
