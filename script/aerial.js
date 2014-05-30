@@ -356,22 +356,35 @@ function IdealIsotropicRadiator () {"use strict";
 	};
 }
 
-function MagneticLoop (D, w, h, d, N, g, mu) {"use strict";
+function MagneticLoop (D, w, h, d, f, N, g, mu) {"use strict";
     var S, W, l, p;
 
+    var X = [0, 0, 0.693, 2.48, 5.66, 10.45, 17.03, 25.55, 36.16, 48.96, 64.07, 81.57, 101.5, 124.1, 149.3, 177.2, 208, // 1-17
+             241, 278, 317, 359, 405, 453, 505, 560, 618, 679, 744, 811, 883, 957, 1035, // 18-32
+             1117, 1202, 1291, 1383, 1478, 1578, 1680, 1787, 1898, 2012, 2130, 2251, 2376, 2505, 2638, // 32-47
+             2775, 2916, 3060, 3209, 3361, 3518, 3678, 3842, 4011, 4183, 4359, 4540, 4724];  // 48-60
+    
     if (D != 0) {
         p = Math.PI * D;
         S = Math.PI * D * D / 4;
         l = Math.PI * D * N;
         // http://www.technick.net/public/code/cp_dpage.php?aiocp_dp=util_inductance_circle
-        W = (Phys.Z0 / Math.PI) * (Math.log (D / d) - 0.0794) * N;
+        W = (Phys.Z0 / Math.PI) * (Math.log (D / d) - 0.0794);
     } else if (w === h) {       
         p = 4 * w;        
         S = w * w;
         l = p * N;
-        
+                
         // http://www.technick.net/public/code/cp_dpage.php?aiocp_dp=util_inductance_square
-        W = (Phys.Z0 / Math.PI) * (Math.log (w / d) - 0.0809) * N;
+        // W = (Phys.Z0 / Math.PI) * (Math.log (w / d) - 0.0809);
+        
+        // Кляцкин, с.68
+        var W1 = (Phys.Z0 / Math.PI) * (Math.log (w / d) - 0.169);
+        
+        var m = N * (N - 1) / 2;
+        var W2 = (Phys.Z0 / Math.PI) * (2 / N) * (m * Math.log (w / f) - X [N - 1] - 0.77 * m);
+        
+        W = W1 + W2;
     } else {
         p = 2 * (w + h);        
         S = w * h;
@@ -382,19 +395,31 @@ function MagneticLoop (D, w, h, d, N, g, mu) {"use strict";
         var Wh = h * (Math.log (4 * h / d) - Math.log ((h + wh) / w));
         var Wwh = 2 * wh;
         var W1 = (Ww + Wh + Wwh) / (w + h);
-        W = (Phys.Z0 / Math.PI) * (W1 - 2) * N;
+        W = (Phys.Z0 / Math.PI) * (W1 - 2);
     }
 
 	// TODO: Проверки входных величин
 	function fnZL (lambda, R1, RS) {
+        // TODO: Считать как распространение волны в волноводе
+    
         var k = 2 * Math.PI / lambda;
-        return Antenna.fnPerfectLoadedTransmissionLineInputImpedance (k * l / 2, W, new Complex (R1 * l + RS, 0));
+        var ll = l / 2;
+        return Antenna.fnPerfectLoadedTransmissionLineInputImpedance (k * ll, W, new Complex (R1 * l + RS, 0));
 
         var beta = new Complex ((R1 + RS / l) / W, 0);
         var W1 = Antenna.fnLossyTransmissionLineWaveImpedance (W, beta, k);
-		return Antenna.fnLossyClosedTransmissionLineInputImedance (W1, l / 2, beta, k);
+		return Antenna.fnLossyClosedTransmissionLineInputImedance (W1, ll, beta, k);
 	}
-
+    
+	// резонансная частота и собственная длина волны
+	var f0 = Antenna.fnResonance (function (f) {
+		var lambda = Phys.C / f;
+        var lg = 2 * Math.PI * N * S / lambda;
+        var RS = 800 * Math.pow (lg / lambda, 2);
+        var R1 = Antenna.fnWireLossResistance (lambda, d, g, mu);
+		return -fnZL (lambda, l * R1, RS).y;
+	}, [100e3, 1000e6], 0.1); // XXX: относительный
+   
 	this.fn = function (lambda) {
 		var result;
 
@@ -418,6 +443,11 @@ function MagneticLoop (D, w, h, d, N, g, mu) {"use strict";
         result.W = W;
         result.S = S;
         result.p = p;
+        result.l = l;
+        result.f0 = f0;
+        result.lambda0 = Phys.C / f0;
+        result.L0 = result.W * (l / 2) / Phys.C;
+        result.C0 = result.L0 / Math.pow (result.W, 2);
         
         // Q    
         result.L = result.W * l / Phys.C;

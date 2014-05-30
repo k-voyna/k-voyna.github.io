@@ -11,9 +11,10 @@ function crystal () {"use strict";
             d : [1e0],
             s : [1e0],
             w : [1e0],
+            b : [1e-3],
             h : [1e0],
             N : [],
-            design: ["O", "[]", "[ ]"],
+            design: ["O", "[]", "[ ]", "[N]"],
             wire_d : [1e-3],
             material : ["Perfect", "Cu", "Al"]
         },
@@ -24,6 +25,7 @@ function crystal () {"use strict";
             g : [1e0, 2, "exp"],            
             l : [1e0, 2],
             ll : [1e0, 2],
+            ll0 : [1e0, 2],
             p : [1e0, 2],
             pl : [1e0, 2],
             S : [1e0, 2],
@@ -38,18 +40,19 @@ function crystal () {"use strict";
             Rl : [1e0, 2],
             Qa : [1e0, 2],
             C : [1e-12, 2],
+            C0 : [1e-12, 2],
+            L0 : [1e-6, 2],
             eta : [1e0, 2, "exp"],   
-            Za : [1e0, 2, "complex"]
+            Za : [1e0, 2, "complex"],
+            f0 : [1e6, 2],
+            lambda0 : [1e0, 2]
         }
     }, function () {   
         var KWH = 10;
+        var KL = 0.14;
     
-        this.check (this.f >= 1e3 && this.f <= 30e6, "f");
-         
+        this.check (this.f >= 1e3 && this.f <= 30e6, "f");        
         this.check ((this.w > this.h && this.w / this.h <= KWH) || (this.h > this.w && this.h / this.w <= KWH) || (this.h == this.w), "wh");
-        
-//        this.check (this.N > 0, "N");
-        this.N = 1;
         this.check (this.wire_d > 0, "wire_d");
            
         this.lambda = Phys.C / this.f;
@@ -66,10 +69,22 @@ function crystal () {"use strict";
             this.S = Math.PI * Math.pow (this.d / 2, 2);
             this.p = Math.PI * this.d;
             this.w = 0;
-            this.h = 0;            
+            this.h = 0;
+            this.N = 1;
         } else if (this.design === "[]") {
 			this.check (this.s > 0, "s");
 			
+            this.S = Math.pow (this.s, 2);
+            this.p = this.s * 4;
+            this.w = this.s;
+            this.h = this.s;
+            this.d = 0;
+            this.N = 1;
+        } else if (this.design === "[N]") {
+            this.check (this.N >= 2 && this.N <= 60, "N");
+            this.check (this.b >= 5 * this.wire_d && this.b <= this.s / (5 * this.N), "b");
+            this.check (this.s > 0, "s");
+                     
             this.S = Math.pow (this.s, 2);
             this.p = this.s * 4;
             this.w = this.s;
@@ -82,9 +97,10 @@ function crystal () {"use strict";
             this.S = this.h * this.w;
             this.p = (this.h + this.w) * 2;
             this.d = 0;
+            this.N = 1;
         }
        
-        var antenna = new MagneticLoop (this.d, this.w, this.h, this.wire_d, this.N, this.g, this.mu);
+        var antenna = new MagneticLoop (this.d, this.w, this.h, this.wire_d, this.b, this.N, this.g, this.mu);
         this.antenna = antenna;
         
         var antennaAtLambda = this.antenna.fn (this.lambda);
@@ -101,12 +117,20 @@ function crystal () {"use strict";
         this.Qa = antennaAtLambda.Q;
         this.S = antennaAtLambda.S;
         this.p = antennaAtLambda.p;
-//      this.l = antennaAtLambda.l;
-//      this.ll = this.l / this.lambda;
-        this.pl = this.p / this.lambda;        
-                
+        this.l = antennaAtLambda.l;
+        this.ll = this.l / this.lambda;
+        this.pl = this.p / this.lambda;
+        this.f0 = antennaAtLambda.f0;
+        this.C0 = antennaAtLambda.C0;
+        this.L0 = antennaAtLambda.L0;
+        this.lambda0 = antennaAtLambda.lambda0;
+        this.ll0 = this.lambda / this.lambda0;
+
         // ограничение на периметр 0,14 lambda (Кочержевский)
-        this.suggest (this.p <= this.lambda * 0.14, "pL"); 
+        this.suggest (this.p <= this.lambda * KL, "pL");       
+        this.suggest (!isNaN (this.f0), "f0"); 
+
+        this.check (this.l <= this.lambda * KL || this.N === 1, "lL");
         this.check (this.p <= this.lambda, "pl"); 
         this.check (this.wire_d <= this.p / 20, "wire_d");        
         
@@ -114,10 +138,8 @@ function crystal () {"use strict";
         // this.Q = 3 * Math.log (this.d / this.wire_d) * Math.pow (this.lambda / this.p, 3) / Math.PI * this.eta;        
         this.G = Math.log10 (this.D * this.eta);
 
-        // TODO: Собственная емкость и индуктивность
-               
-        // fmax ограничиваем p = lambda
-        this.band = Plots.band (this.f, Phys.C / this.p);
+        // fmax ограничиваем l = 0.14 * lambda
+        this.band = Plots.band (this.f, KL * Phys.C / this.l);
         this.fnZ = function (freq) {
             return antenna.fn (Phys.C / freq).Z;
         };
@@ -153,7 +175,7 @@ function crystal () {"use strict";
             KU : [1e-1, 2],
             Un : [1e-3, 2],
             Qn : [1e0, 2],
-            dF : [1e3, 2]            
+            dF : [1e3, 2]
         }
     }, function () {  
         this.check (this.E <= 10 && this.E > 0, "E");      
