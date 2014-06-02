@@ -249,7 +249,7 @@ Calc.calc = function (table, method) {"use strict";
     
     function fnOutputReal (table, row, value, factor, precision) {       
         var text;
-            precision = 2;
+
         if (isNaN (value)) {
             text = "?";
         } else {
